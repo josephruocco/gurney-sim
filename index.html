@@ -49,7 +49,7 @@
   <h1>GURNEY</h1>
   <p>Wreak havoc on a runaway hospital gurney.</p>
   <button id="playBtn">▶ PLAY</button>
-  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · 1-0, H &amp; O switch worlds · Esc pause</p>
+  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · M cycle mods · 1-0, H &amp; O switch worlds · Esc pause</p>
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
@@ -71,10 +71,11 @@
   <div class="row">
     <button id="riderBtn">Rider (R)</button>
     <button id="spinBtn">Spin (F)</button>
+    <button id="modBtn">Mod: Stock (M)</button>
     <button id="runBtn">⏱ 90s Run</button>
   </div>
 </div>
-<div id="help">W/S accel · A/D steer · Space brake · Shift boost · 1-0 location · R rider · F spin · yellow ramps = air · green pads = speed · clear the checklist for bonus mayhem</div>
+<div id="help">W/S accel · A/D steer · Space brake · Shift boost · 1-0 location · R rider · F spin · M mods · yellow ramps = air · green pads = speed · clear the checklist for bonus mayhem</div>
 
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -109,14 +110,75 @@ function buildGurney(){
   const m1=box(1.4,.25,3.2,pad); m1.position.y=1.05; g.add(m1);
   const plate=box(1.5,.12,3.4,frame); plate.position.y=.9; g.add(plate);
   const wheelMat=new THREE.MeshStandardMaterial({color:0x111418});
+  const stockWheels=[];
   for(const sx of[-0.6,0.6])for(const sz of[-1.4,1.4]){
     const leg=cyl(.06,.06,.8,frame); leg.position.set(sx,.45,sz); g.add(leg);
-    const w=cyl(.18,.18,.12,wheelMat); w.rotation.z=Math.PI/2; w.position.set(sx,.18,sz); g.add(w);
+    const w=cyl(.18,.18,.12,wheelMat); w.rotation.z=Math.PI/2; w.position.set(sx,.18,sz); g.add(w); stockWheels.push(w);
   }
   const rail=box(1.5,.5,.1,frame); rail.position.set(0,1.4,-1.6); g.add(rail);
+  g.userData.stockWheels=stockWheels;
   return g;
 }
 const gurney=buildGurney(); gurney.userData.vy=0; scene.add(gurney);
+
+// ---------- gurney mods (cosmetic only) ----------
+const MOD_NAMES=['Stock','Monster Wheels','Rocket Boosters','IV Drip','Shopping Cart','Sled Dogs','Full Self-Driving'];
+let modIdx=0;
+const modGroups=[null,null,null,null,null,null,null];
+(function buildMods(){
+  const bigWheelM=new THREE.MeshStandardMaterial({color:0x1a1d22,roughness:.9});
+  const monster=new THREE.Group();
+  for(const sx of[-0.7,0.7])for(const sz of[-1.4,1.4]){const w=cyl(.4,.4,.3,bigWheelM,12);w.rotation.z=Math.PI/2;w.position.set(sx,.4,sz);monster.add(w);}
+  gurney.add(monster); modGroups[1]=monster;
+
+  const rocketM=new THREE.MeshStandardMaterial({color:0x2a2e34,metalness:.6,roughness:.3}),flameM=new THREE.MeshBasicMaterial({color:0xff8a2a});
+  const rockets=new THREE.Group();
+  for(const sx of[-0.55,0.55]){const tube=cyl(.14,.14,.9,rocketM,10);tube.rotation.x=Math.PI/2;tube.position.set(sx,.9,1.9);rockets.add(tube);
+    const flame=cone(.14,.5,flameM,8);flame.rotation.x=Math.PI/2;flame.position.set(sx,.9,2.45);rockets.add(flame);}
+  gurney.add(rockets); modGroups[2]=rockets;
+
+  const ivM=new THREE.MeshStandardMaterial({color:0xaab0b8,metalness:.5});
+  const iv=new THREE.Group();
+  const pole=cyl(.04,.04,2.2,ivM,8);pole.position.set(.7,2,.6);iv.add(pole);
+  const bag=box(.25,.35,.08,new THREE.MeshStandardMaterial({color:0xdfe8f0,transparent:true,opacity:.85}));bag.position.set(.7,2.9,.6);iv.add(bag);
+  gurney.add(iv); modGroups[3]=iv;
+
+  const cartM=new THREE.MeshStandardMaterial({color:0xc4c8ce,metalness:.5,roughness:.4,wireframe:true});
+  const cart=new THREE.Group();
+  const cage=box(1.6,1.1,3.4,cartM);cage.position.set(0,1.65,0);cart.add(cage);
+  gurney.add(cart); modGroups[4]=cart;
+
+  const dogs=new THREE.Group();
+  const furs=[0xd8d0c0,0x8a7458,0x4a4238,0xc8c0b0];
+  [[-.5,-2.6],[.5,-2.6],[-.5,-3.3],[.5,-3.3]].forEach(([sx,sz],i)=>{const d=sledDog(furs[i]);d.position.set(sx,0,sz);dogs.add(d);});
+  const ropeM=new THREE.MeshStandardMaterial({color:0x6b4a2b});
+  for(const sx of[-.5,.5]){const rope=cyl(.02,.02,2.6,ropeM,6);rope.rotation.x=Math.PI/2;rope.position.set(sx,.5,-1.6);dogs.add(rope);}
+  gurney.add(dogs); modGroups[5]=dogs;
+
+  const fsd=new THREE.Group();
+  const poleM=new THREE.MeshStandardMaterial({color:0x2a2e34,metalness:.5,roughness:.4});
+  const fsdPole=cyl(.03,.03,.9,poleM,8);fsdPole.position.set(0,1.55,0);fsd.add(fsdPole);
+  const puckM=new THREE.MeshStandardMaterial({color:0x111418,metalness:.7,roughness:.2});
+  const spinner=new THREE.Group();spinner.position.set(0,2.05,0);
+  const puck=cyl(.14,.14,.12,puckM,16);spinner.add(puck);
+  const band=cyl(.145,.145,.03,new THREE.MeshBasicMaterial({color:0x39ff88}),16);band.position.y=.02;spinner.add(band);
+  fsd.add(spinner); fsd.userData.spinner=spinner;
+  gurney.add(fsd); modGroups[6]=fsd;
+})();
+function sledDog(fur){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:fur,roughness:.9});
+  const body=box(.32,.32,.75,m);body.position.y=.42;g.add(body);
+  const head=box(.24,.24,.28,m);head.position.set(0,.55,-.5);g.add(head);
+  const snout=box(.12,.12,.18,m);snout.position.set(0,.5,-.68);g.add(snout);
+  for(const s of[-1,1]){const ear=cone(.06,.14,m,4);ear.position.set(s*.08,.72,-.52);g.add(ear);}
+  const tail=cyl(.04,.02,.35,m,6);tail.rotation.x=1;tail.position.set(0,.55,.42);g.add(tail);
+  for(const sx of[-.11,.11])for(const sz of[-.28,.22]){const leg=cyl(.045,.045,.42,m,6);leg.position.set(sx,.21,sz);g.add(leg);}
+  return g;}
+function applyMod(i){modIdx=i;
+  for(let k=1;k<modGroups.length;k++)modGroups[k].visible=(k===i);
+  gurney.userData.stockWheels.forEach(w=>w.visible=(i!==1));
+  document.getElementById('modBtn').textContent='Mod: '+MOD_NAMES[i]+' (M)';}
+function cycleMod(){applyMod((modIdx+1)%MOD_NAMES.length);}
+applyMod(0);
 
 // ---------- rider ----------
 const SKIN=new THREE.MeshStandardMaterial({color:0xe8c39e}),SHIRT=new THREE.MeshStandardMaterial({color:0x2e6cf0});
@@ -146,12 +208,13 @@ applyRider();
 
 // ---------- world ----------
 let world=new THREE.Group(); scene.add(world);
-let drivable=[], solids=[], props=[], boosts=[];
+let drivable=[], solids=[], props=[], boosts=[], ceilings=[];
 let barnRef=null, fishGroup=null;
-const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0);
-function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];barnRef=null;fishGroup=null;}
+const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
+function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];barnRef=null;fishGroup=null;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
-  if(opt.drive)drivable.push(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); return m;}
+  if(opt.drive)drivable.push(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
+function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
 function addSolid(g,x,z,r){g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);world.add(g);solids.push({position:g.position,radius:r});}
 function addProp(g,x,z,r,mass,type='thing'){g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);world.add(g);
   props.push({g,pos:g.position,radius:r,mass,type,vel:new THREE.Vector3(),spin:new THREE.Vector3(),asleep:true});}
@@ -279,7 +342,7 @@ function buildGarage(){
   const white=new THREE.MeshStandardMaterial({color:0xcfcfcf});
   const floors=[0,5,10];
   for(let i=0;i<3;i++){const cx=i*45,fy=floors[i];
-    slab(30,.4,60,cx,fy,0,con,{drive:true}); slab(30,.3,60,cx,fy+4.7,0,top);
+    slab(30,.4,60,cx,fy,0,con,{drive:true}); slab(30,.3,60,cx,fy+4.7,0,top,{ceil:true});
     for(const zz of[-22,0,22])for(const xx of[cx-13.5,cx+13.5])slab(1.4,4.6,1.4,xx,fy+2.3,zz,top,{solid:true,r:1.1});
     // painted bays + parked cars along both long walls
     for(const zrow of[23,-23]){
@@ -292,13 +355,13 @@ function buildGarage(){
     wallLine(cx-15,30,cx+15,30,fy); wallLine(cx-15,-30,cx+15,-30,fy);
     if(i===0) wallLine(cx-15,-30,cx-15,30,fy); if(i===2) wallLine(cx+15,-30,cx+15,30,fy);
     // ramp up to the next level
-    if(i<2){const ang=Math.atan2(5,15);const r=box(15.8,.4,60,con);r.position.set(cx+22.5,fy+2.6,0);r.rotation.z=-ang;r.receiveShadow=true;world.add(r);drivable.push(r);}
+    if(i<2){const ang=Math.atan2(5,15);const r=box(15.8,.4,60,con);r.position.set(cx+22.5,fy+2.6,0);r.rotation.z=ang;r.receiveShadow=true;world.add(r);drivable.push(r);}
   }
   // continuous side barriers along the whole garage (platforms AND ramps) + end caps
   colliderLine(-15,30,105,30); colliderLine(-15,-30,105,-30);
   colliderLine(-15,-30,-15,30); colliderLine(105,-30,105,30);
   for(let i=0;i<8;i++)addProp(trafficCone(),rand(-12,12),rand(-15,15),.5,1,'trafficCone');
-  for(let i=0;i<4;i++)addProp(trashCan(),rand(33,57),rand(-15,15),.6,2,'trashCan');
+  for(let i=0;i<6;i++)addProp(trashCan(),rand(33,57),rand(-15,15),.6,2,'trashCan');
   return new THREE.Vector3(0,0,0);
 }
 function buildLot(){
@@ -564,7 +627,7 @@ function loadLevel(name){clearWorld();spawn=LEVELS[name]();current=name;respawn(
 // ---------- input ----------
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
-  if(e.code==='KeyR')toggleRider(); if(e.code==='KeyF')toggleSpin();
+  if(e.code==='KeyR')toggleRider(); if(e.code==='KeyF')toggleSpin(); if(e.code==='KeyM')cycleMod();
   if(e.code==='Escape'||e.code==='KeyP')togglePause();
   const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway',KeyO:'ohio'}[e.code]; if(d)loadLevel(d);});
 addEventListener('keyup',e=>keys[e.code]=false);
@@ -575,6 +638,7 @@ let spinMode=false, spinCamHeading=0;
 function toggleSpin(){spinMode=!spinMode;if(spinMode)spinCamHeading=v.heading;document.getElementById('spinBtn').classList.toggle('on',spinMode);}
 document.getElementById('riderBtn').onclick=toggleRider;
 document.getElementById('spinBtn').onclick=toggleSpin;
+document.getElementById('modBtn').onclick=cycleMod;
 for(const b of document.querySelectorAll('[data-lvl]'))b.onclick=()=>loadLevel(b.dataset.lvl);
 
 // ---------- physics ----------
@@ -617,6 +681,8 @@ function tick(){
   const dt=Math.min(clock.getDelta(),0.05);
   if(!gameStarted||paused){ if(engineGain)engineGain.gain.value=0; renderer.render(scene,camera); requestAnimationFrame(tick); return; }
 
+  if(modIdx===6){keys['KeyW']=true; if(!keys['KeyA']&&!keys['KeyD'])v.heading+=Math.sin(performance.now()*0.0006)*1.3*dt;
+    modGroups[6].userData.spinner.rotation.y+=dt*5;} // FSD: auto-throttle and steers itself (badly)
   const boost=keys['ShiftLeft']||keys['ShiftRight'];
   const acc=boost?ACCEL*2.2:ACCEL, maxS=boost?40:MAX;
   if(keys['KeyW'])v.speed+=acc*dt; else if(keys['KeyS'])v.speed-=ACCEL*dt;
@@ -659,7 +725,8 @@ function tick(){
 
   const gx=gurney.position.x,gpy=gurney.position.y,gz=gurney.position.z;
   const camH=(spinMode?spinCamHeading:v.heading)+lookYaw;
-  const camDist=CAM_D*Math.cos(lookPitch), camRise=CAM_D*Math.sin(lookPitch);
+  const camDist=CAM_D*Math.cos(lookPitch); let camRise=CAM_D*Math.sin(lookPitch);
+  const ceil=ceilingAt(gx,gz,gpy+0.5); camRise=Math.min(camRise,ceil-gpy-CAM_H-0.4);
   camera.position.lerp(new THREE.Vector3(gx+Math.sin(camH)*camDist,gpy+CAM_H+camRise,gz+Math.cos(camH)*camDist),0.12);
   camera.lookAt(gx,gpy+1.3,gz);
   if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake*.6;camera.position.z+=(Math.random()-.5)*shake;shake=Math.max(0,shake-dt*4);}
