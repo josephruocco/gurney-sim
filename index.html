@@ -49,7 +49,7 @@
   <h1>GURNEY</h1>
   <p>Wreak havoc on a runaway hospital gurney.</p>
   <button id="playBtn">▶ PLAY</button>
-  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · 1-0 &amp; H switch worlds · Esc pause</p>
+  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · 1-0, H &amp; O switch worlds · Esc pause</p>
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
@@ -66,6 +66,7 @@
     <button data-lvl="ocean">Ocean</button>
     <button data-lvl="xp">Bliss</button>
     <button data-lvl="highway">Highway</button>
+    <button data-lvl="ohio">Ohio</button>
   </div>
   <div class="row">
     <button id="riderBtn">Rider (R)</button>
@@ -255,6 +256,16 @@ function cow(){const g=new THREE.Group();const w=new THREE.MeshStandardMaterial(
   for(const sx of[-.35,.35])for(const sz of[-.7,.7]){const l=cyl(.13,.13,1,blk,8);l.position.set(sx,.5,sz);g.add(l);}return g;}
 function hayBale(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0xc9a23a,roughness:1});
   const b=cyl(.8,.8,1.5,m,14);b.rotation.z=Math.PI/2;b.position.y=.8;g.add(b);return g;}
+function cornStalk(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0x4a7a2a,roughness:1});
+  const s=cyl(.05,.08,rand(1.8,2.6),m,6);s.position.y=1.1;g.add(s);
+  for(let k=0;k<3;k++){const leaf=box(.05,.4,.9,m);leaf.position.set(0,rand(.8,1.8),0);leaf.rotation.y=rand(0,6.28);leaf.rotation.z=.5;g.add(leaf);}
+  const ear=cyl(.09,.09,.35,new THREE.MeshStandardMaterial({color:0xe8d24a}),8);ear.position.set(.15,1.3,0);ear.rotation.z=.3;g.add(ear);
+  return g;}
+function possum(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0xb8b0a8,roughness:.9});
+  const body=ball(.35,m);body.scale.set(1.5,.8,1);body.position.y=.35;g.add(body);
+  const head=ball(.22,m);head.position.set(.5,.4,0);g.add(head);
+  const tail=cyl(.05,.02,.7,new THREE.MeshStandardMaterial({color:0xd8b8a8}),6);tail.rotation.z=Math.PI/2;tail.position.set(-.55,.3,0);g.add(tail);
+  return g;}
 
 const rand=(a,b)=>a+Math.random()*(b-a);
 function scatter(make,n,r,mass,range,avoid=8){for(let i=0;i<n;i++){let x,z;
@@ -484,8 +495,38 @@ function buildHighway(){
   return new THREE.Vector3(0,0,175);
 }
 
-const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway};
-const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway'};
+function buildOhio(){
+  scene.background=new THREE.Color(0x3a3550);scene.fog=new THREE.Fog(0x3a3550,90,320);hemi.intensity=.55;
+  slab(400,.4,400,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x6b5a2a,roughness:1}),{drive:true});
+  const road=box(10,.02,300,new THREE.MeshStandardMaterial({color:0x2b2e33}));road.position.set(0,.01,0);world.add(road);
+  // water tower — the iconic disc-on-legs landmark
+  const towerM=new THREE.MeshStandardMaterial({color:0xb0c0c8,metalness:.3,roughness:.6});
+  const tank=cyl(9,9,10,towerM,20);tank.position.set(70,30,-60);tank.castShadow=true;world.add(tank);
+  const cap=cone(10,4,towerM,20);cap.position.set(70,36,-60);world.add(cap);
+  for(const a of[0,1,2,3]){const ang=a*Math.PI/2+.4,leg=cyl(.4,.4,25,towerM,8);leg.position.set(70+Math.cos(ang)*7,12.5,-60+Math.sin(ang)*7);leg.castShadow=true;world.add(leg);}
+  solids.push({position:new THREE.Vector3(70,0,-60),radius:8});
+  // gas station canopy
+  const canM=new THREE.MeshStandardMaterial({color:0xd8483a,roughness:.6});
+  const canopy=box(24,.6,14,canM);canopy.position.set(-60,7,40);canopy.castShadow=true;world.add(canopy);
+  for(const sx of[-9,9])for(const sz of[-5,5]){const post=box(.5,7,.5,new THREE.MeshStandardMaterial({color:0x555}));post.position.set(-60+sx,3.5,40+sz);world.add(post);}
+  solids.push({position:new THREE.Vector3(-60,0,40),radius:12});
+  for(const sx of[-4,4]){const pump=box(1.4,3,1,new THREE.MeshStandardMaterial({color:0xd8d8d8}));addSolid(pump,-60+sx,40,1.2);pump.position.y=1.5;}
+  // UFO hovering over a soon-to-be-abducted cow — classic Ohio energy
+  const ufo=new THREE.Group();
+  const saucer=cyl(6,9,1.4,new THREE.MeshStandardMaterial({color:0x555a66,metalness:.7,roughness:.3}),24);ufo.add(saucer);
+  const dome=ball(3,new THREE.MeshStandardMaterial({color:0x8fd8ff,transparent:true,opacity:.55,emissive:0x2a6a8a,emissiveIntensity:.4}));dome.position.y=1.8;ufo.add(dome);
+  const beam=cyl(1.5,8,26,new THREE.MeshBasicMaterial({color:0x9bffb0,transparent:true,opacity:.25}),16);beam.position.y=-13;ufo.add(beam);
+  ufo.position.set(20,26,10);world.add(ufo);
+  addProp(cow(),20,10,1.4,7,'cow');
+  scatter(cornStalk,140,.3,.3,170,14);
+  scatter(possum,10,.5,.8,150,10);
+  scatter(trafficCone,8,.5,1,150,14);
+  addJumpRamp(0,-30,7,3,0); addBoost(0,90,0);
+  return new THREE.Vector3(0,0,120);
+}
+
+const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio};
+const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio'};
 let current='garage', spawn=new THREE.Vector3();
 // ---------- sandbox: mayhem score + per-level challenges ----------
 let counts={}, flags={}, curChallenges=[];
@@ -502,6 +543,7 @@ const CHALLENGES={
   ocean:[['Squash 8 sea urchins',()=>c('urchin',8)],['Catch big air',()=>flags.air],['Reach the deep edge',()=>Math.hypot(gurney.position.x,gurney.position.z)>150]],
   xp:[['Catch big air',()=>flags.air],['Hit 140+ km/h',()=>Math.abs(v.speed)*4.2>=140],['Roam to the far hills',()=>Math.hypot(gurney.position.x,gurney.position.z)>150]],
   highway:[['Cause a 12-car pileup',()=>c('car',12)],['Hit 160+ km/h',()=>Math.abs(v.speed)*4.2>=160],['Reach the far end',()=>Math.abs(gurney.position.z)>190]],
+  ohio:[['Flatten 40 cornstalks',()=>c('cornStalk',40)],['Flatten 5 possums',()=>c('possum',5)],['Escape Ohio',()=>Math.hypot(gurney.position.x,gurney.position.z)>170]],
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
   curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
@@ -524,8 +566,10 @@ const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
   if(e.code==='KeyR')toggleRider(); if(e.code==='KeyF')toggleSpin();
   if(e.code==='Escape'||e.code==='KeyP')togglePause();
-  const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway'}[e.code]; if(d)loadLevel(d);});
+  const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway',KeyO:'ohio'}[e.code]; if(d)loadLevel(d);});
 addEventListener('keyup',e=>keys[e.code]=false);
+let lookYaw=0, lookPitch=0;
+addEventListener('mousemove',e=>{lookYaw=(0.5-e.clientX/innerWidth)*1.4; lookPitch=(0.5-e.clientY/innerHeight)*0.7;});
 function toggleRider(){riderMode=riderMode==='supine'?'surfer':'supine';applyRider();}
 let spinMode=false, spinCamHeading=0;
 function toggleSpin(){spinMode=!spinMode;if(spinMode)spinCamHeading=v.heading;document.getElementById('spinBtn').classList.toggle('on',spinMode);}
@@ -614,8 +658,9 @@ function tick(){
   riderRoot.position.copy(gurney.position); riderRoot.rotation.y=v.heading;
 
   const gx=gurney.position.x,gpy=gurney.position.y,gz=gurney.position.z;
-  const camH=spinMode?spinCamHeading:v.heading;
-  camera.position.lerp(new THREE.Vector3(gx+Math.sin(camH)*CAM_D,gpy+CAM_H,gz+Math.cos(camH)*CAM_D),0.12);
+  const camH=(spinMode?spinCamHeading:v.heading)+lookYaw;
+  const camDist=CAM_D*Math.cos(lookPitch), camRise=CAM_D*Math.sin(lookPitch);
+  camera.position.lerp(new THREE.Vector3(gx+Math.sin(camH)*camDist,gpy+CAM_H+camRise,gz+Math.cos(camH)*camDist),0.12);
   camera.lookAt(gx,gpy+1.3,gz);
   if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake*.6;camera.position.z+=(Math.random()-.5)*shake;shake=Math.max(0,shake-dt*4);}
 
