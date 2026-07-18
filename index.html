@@ -1107,12 +1107,13 @@ function tick(){
       gurney.userData.vy=Math.min(14,(gr-oldY)/Math.max(dt,1e-3));airTime=0;} // carry climb speed so ramps launch you
     // gravity along the slope: rip down drop-ins, bleed off climbing, and roll back down if you stall on a wall
     if(gr!==null&&airTime===0){
-      const fx=-Math.sin(v.heading),fz=-Math.cos(v.heading);
-      const ahead=groundAt(gurney.position.x+fx,gurney.position.z+fz,gurney.position.y+4);
-      if(ahead!==null){const slope=Math.max(-3,Math.min(3,ahead-gr));
+      const fx=-Math.sin(v.heading),fz=-Math.cos(v.heading),D=1.8; // sample about half a gurney-length ahead
+      const ahead=groundAt(gurney.position.x+fx*D,gurney.position.z+fz*D,gurney.position.y+4);
+      if(ahead!==null){const slope=Math.max(-3,Math.min(3,(ahead-gr)/D));
         const sinT=slope/Math.sqrt(1+slope*slope); // true gravity component along the slope — tan() here would out-muscle the engine and stall every climb
         v.speed=Math.max(-58,Math.min(58,v.speed-sinT*G*0.62*dt));
-        groundPitch=-Math.atan(slope);} // nose up when the ground rises ahead
+        // +rotation.x is nose-up under YXZ (local -z forward maps to (0,sinθ,-cosθ)), so rising ground ahead = +pitch
+        groundPitch=Math.atan(slope);}
     }
   }
   if(airTime>0.7)flags.air=true;
