@@ -231,12 +231,15 @@ let world=new THREE.Group(); scene.add(world);
 let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
 let barnRef=null, fishGroup=null, ferrisRef=null;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
-function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;}
+let worldDirty=true;
+function addDrivable(m){drivable.push(m);worldDirty=true;}
+function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
-  if(opt.drive)drivable.push(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
+  if(opt.drive)addDrivable(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
-function addSolid(g,x,z,r){g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);world.add(g);solids.push({position:g.position,radius:r});}
-function addProp(g,x,z,r,mass,type='thing'){g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);world.add(g);
+// props/solids sit on the terrain rather than at y=0, so they don't float over trenches or bowls
+function addSolid(g,x,z,r){g.position.set(x,groundAt(x,z,80)??0,z);g.traverse(o=>o.castShadow=true);world.add(g);solids.push({position:g.position,radius:r});}
+function addProp(g,x,z,r,mass,type='thing'){g.position.set(x,groundAt(x,z,80)??0,z);g.traverse(o=>o.castShadow=true);world.add(g);
   // cache the local bounding-box corners so a tumbled prop can rest on its lowest point instead of
   // burying its origin in the floor (models are built with the origin at their base)
   g.updateMatrixWorld(true);
@@ -253,12 +256,12 @@ function propLowestY(p){ // how far the prop's geometry hangs below its origin a
 function addJumpRamp(x,z,len,rise,yaw=0){const ang=Math.atan2(rise,len),L=Math.hypot(len,rise);
   const g=new THREE.Group();const r=box(5,.3,L,new THREE.MeshStandardMaterial({color:0xe0a020,roughness:.7}));
   r.rotation.x=ang;r.position.y=rise/2;g.add(r);
-  g.position.set(x,0,z);g.rotation.y=yaw;g.traverse(o=>o.castShadow=true);world.add(g);drivable.push(r);}
+  g.position.set(x,0,z);g.rotation.y=yaw;g.traverse(o=>o.castShadow=true);world.add(g);addDrivable(r);}
 // wide ramp that can start off the ground (mega-ramp roll-ins / landing slopes). High end faces -z before yaw.
 function addSlope(x,z,w,run,rise,baseY=0,yaw=0,col=0xc8a060){const ang=Math.atan2(rise,run),L=Math.hypot(run,rise);
   const g=new THREE.Group();const r=box(w,.6,L,new THREE.MeshStandardMaterial({color:col,roughness:.8}));
   r.rotation.x=ang;r.position.y=baseY+rise/2;g.add(r);
-  g.position.set(x,0,z);g.rotation.y=yaw;g.traverse(o=>o.castShadow=true);world.add(g);drivable.push(r);return r;}
+  g.position.set(x,0,z);g.rotation.y=yaw;g.traverse(o=>o.castShadow=true);world.add(g);addDrivable(r);return r;}
 // concave roll-in: steep at the lip, curving out to flat at the bottom (mega-ramp style). Bottom sits at (x,zBase), rising toward -z.
 // Returns the top-of-ramp {y,z} so callers can butt a start deck against it.
 function addCurvedRamp(x,zBase,w,R,maxA,col=0xc8a060){
@@ -269,7 +272,7 @@ function addCurvedRamp(x,zBase,w,R,maxA,col=0xc8a060){
     const s=box(w,th,segLen,mat);
     // drop each box by half its vertical thickness so the TOP face lies on the curve — otherwise the ramp foot sits proud of the ground
     s.position.set(x,R-R*Math.cos(am)-th/2/Math.cos(am),zBase-R*Math.sin(am));
-    s.rotation.x=am;s.castShadow=true;s.receiveShadow=true;world.add(s);drivable.push(s);
+    s.rotation.x=am;s.castShadow=true;s.receiveShadow=true;world.add(s);addDrivable(s);
   }
   // report the actual top-face outer corner of the last segment so callers can butt a deck flush against it
   const amL=(segs-.5)/segs*maxA, segLenL=R*(maxA/segs)*1.12;
@@ -279,17 +282,17 @@ function addCurvedRamp(x,zBase,w,R,maxA,col=0xc8a060){
 function addHalfpipe(cx,cz,len,R,W){
   const mat=new THREE.MeshStandardMaterial({color:0x9aa0a8,roughness:.85});
   const deckM=new THREE.MeshStandardMaterial({color:0x7a6a58,roughness:.9});
-  const floor=box(W*2,.6,len,mat);floor.position.set(cx,.3,cz);floor.receiveShadow=true;world.add(floor);drivable.push(floor);
+  const floor=box(W*2,.6,len,mat);floor.position.set(cx,.3,cz);floor.receiveShadow=true;world.add(floor);addDrivable(floor);
   const segs=12,maxA=Math.PI/2*0.8;
   for(const side of[-1,1]){
     for(let i=0;i<segs;i++){
       const a0=i/segs*maxA,a1=(i+1)/segs*maxA,am=(a0+a1)/2,segLen=R*(a1-a0)*1.08;
       const s=box(segLen,.6,len,mat);
       s.position.set(cx+side*(W+R*Math.sin(am)),R-R*Math.cos(am)+.3,cz);
-      s.rotation.z=side*am;s.receiveShadow=true;s.castShadow=true;world.add(s);drivable.push(s);
+      s.rotation.z=side*am;s.receiveShadow=true;s.castShadow=true;world.add(s);addDrivable(s);
     }
     const topY=R-R*Math.cos(maxA),topX=side*(W+R*Math.sin(maxA));
-    const deck=box(12,.6,len,deckM);deck.position.set(cx+topX+side*6,topY+.3,cz);deck.castShadow=true;world.add(deck);drivable.push(deck);
+    const deck=box(12,.6,len,deckM);deck.position.set(cx+topX+side*6,topY+.3,cz);deck.castShadow=true;world.add(deck);addDrivable(deck);
     // coping rail along the lip
     const cope=cyl(.18,.18,len,new THREE.MeshStandardMaterial({color:0xd8d8d8,metalness:.7}),8);
     cope.rotation.x=Math.PI/2;cope.position.set(cx+topX,topY+.7,cz);world.add(cope);
@@ -335,18 +338,24 @@ function wallLine(x1,z1,x2,z2,fy){const len=Math.hypot(x2-x1,z2-z1),cx=(x1+x2)/2
   const w=box(len,1.4,0.5,new THREE.MeshStandardMaterial({color:0x8a9099,metalness:.3,roughness:.6}));w.position.set(cx,fy+0.7,cz);w.rotation.y=-ang;world.add(w);
   const n=Math.ceil(len/3);for(let i=0;i<=n;i++){const t=i/n;solids.push({position:new THREE.Vector3(x1+(x2-x1)*t,0,z1+(z2-z1)*t),radius:1.6});}}
 function colliderLine(x1,z1,x2,z2){const n=Math.ceil(Math.hypot(x2-x1,z2-z1)/3);for(let i=0;i<=n;i++){const t=i/n;solids.push({position:new THREE.Vector3(x1+(x2-x1)*t,0,z1+(z2-z1)*t),radius:1.8});}} // colliders block at all heights (xz only)
-// leaning barbed-wire fence: posts, three strands, barbs. Blocks the gurney.
+// barbed-wire fence: each post is planted on the terrain and the strands sag between them,
+// so the fence dips down into trenches instead of hanging flat in the air
 function addBarbedWire(x1,z1,x2,z2,h=1.9){
-  const len=Math.hypot(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2,ang=Math.atan2(z2-z1,x2-x1);
-  const g=new THREE.Group();
+  const len=Math.hypot(x2-x1,z2-z1);
   const wood=new THREE.MeshStandardMaterial({color:0x54432f,roughness:1});
   const wire=new THREE.MeshStandardMaterial({color:0x9aa0a6,metalness:.6,roughness:.5});
-  const posts=Math.max(2,Math.round(len/7));
-  for(let i=0;i<=posts;i++){const p=cyl(.11,.14,h,wood,6);p.position.set(-len/2+i/posts*len,h/2,0);p.rotation.z=rand(-.06,.06);g.add(p);}
-  for(const yy of[h*.42,h*.68,h*.94]){
-    const w=cyl(.035,.035,len,wire,5);w.rotation.z=Math.PI/2;w.position.set(0,yy,0);g.add(w);}
-  for(let d=2;d<len;d+=3){const barb=box(.13,.13,.13,wire);barb.position.set(-len/2+d,h*.68,0);barb.rotation.set(.7,.7,0);g.add(barb);}
-  g.position.set(cx,0,cz);g.rotation.y=-ang;g.traverse(o=>o.castShadow=true);world.add(g);
+  const n=Math.max(2,Math.round(len/6)), pts=[], UPY=new THREE.Vector3(0,1,0);
+  for(let i=0;i<=n;i++){const t=i/n,x=x1+(x2-x1)*t,z=z1+(z2-z1)*t,y=groundAt(x,z,80)??0;
+    const p=cyl(.11,.14,h,wood,6);p.position.set(x,y+h/2,z);p.rotation.z=rand(-.06,.06);p.castShadow=true;world.add(p);
+    pts.push({x,y,z});}
+  for(const f of[.42,.68,.94])for(let i=0;i<n;i++){
+    const a=pts[i],b=pts[i+1],ay=a.y+h*f,by=b.y+h*f;
+    const dx=b.x-a.x,dy=by-ay,dz=b.z-a.z,L=Math.hypot(dx,dy,dz);
+    const w=cyl(.035,.035,L,wire,5);
+    w.position.set((a.x+b.x)/2,(ay+by)/2,(a.z+b.z)/2);
+    w.quaternion.setFromUnitVectors(UPY,new THREE.Vector3(dx,dy,dz).normalize());
+    world.add(w);
+    const barb=box(.13,.13,.13,wire);barb.position.copy(w.position);barb.rotation.set(.7,.7,0);world.add(barb);}
   colliderLine(x1,z1,x2,z2);
 }
 
@@ -528,7 +537,7 @@ function buildGarage(){
     wallLine(cx-15,30,cx+15,30,fy); wallLine(cx-15,-30,cx+15,-30,fy);
     if(i===0) wallLine(cx-15,-30,cx-15,30,fy); if(i===2) wallLine(cx+15,-30,cx+15,30,fy);
     // ramp up to the next level
-    if(i<2){const ang=Math.atan2(5,15);const r=box(15.8,.4,60,con);r.position.set(cx+22.5,fy+2.6,0);r.rotation.z=ang;r.receiveShadow=true;world.add(r);drivable.push(r);}
+    if(i<2){const ang=Math.atan2(5,15);const r=box(15.8,.4,60,con);r.position.set(cx+22.5,fy+2.6,0);r.rotation.z=ang;r.receiveShadow=true;world.add(r);addDrivable(r);}
   }
   // continuous side barriers along the whole garage (platforms AND ramps) + end caps
   colliderLine(-15,30,105,30); colliderLine(-15,-30,105,-30);
@@ -548,7 +557,7 @@ function buildLot(){
     const lamp=box(2,.3,1,new THREE.MeshStandardMaterial({color:0xfff2c0,emissive:0xfff2c0,emissiveIntensity:.7}));lamp.position.set(x,9,z);world.add(lamp);solids.push({position:p.position,radius:.6});}
   const store=box(70,12,8,new THREE.MeshStandardMaterial({color:0xb8c0c8}));store.position.set(0,6,-78);store.castShadow=true;world.add(store);
   const sign=box(40,4,.5,new THREE.MeshStandardMaterial({color:0xd23a3a,emissive:0xd23a3a,emissiveIntensity:.4}));sign.position.set(0,10,-73.6);world.add(sign);
-  solids.push({position:store.position,radius:36});
+  colliderLine(-35,-74,35,-74); // storefront collides as a line; a radius-36 circle here walled off half the lot
   // garbage strewn around
   scatter(trashCan,10,.6,2,70); scatter(bottle,20,.25,.4,70); scatter(debris,16,.4,.6,70);
   scatter(trafficCone,12,.5,1,70); scatter(canadian,6,.5,1,60,12); scatter(strollerLady,6,1,2,65,12);
@@ -578,7 +587,7 @@ function buildNiagara(){
   // the falls: water curtain dropping off the edge
   const curtain=box(140,52,2,new THREE.MeshStandardMaterial({color:0x9fd0e8,roughness:.2,transparent:true,opacity:.8}));curtain.position.set(0,-26,-31);world.add(curtain);
   // mist + lower basin
-  const basin=new THREE.Mesh(new THREE.PlaneGeometry(400,300),new THREE.MeshStandardMaterial({color:0x2f6f9c,roughness:.3}));basin.rotation.x=-Math.PI/2;basin.position.set(0,-52,-120);basin.receiveShadow=true;world.add(basin);drivable.push(basin); // land in the water at the bottom
+  const basin=new THREE.Mesh(new THREE.PlaneGeometry(400,300),new THREE.MeshStandardMaterial({color:0x2f6f9c,roughness:.3}));basin.rotation.x=-Math.PI/2;basin.position.set(0,-52,-120);basin.receiveShadow=true;world.add(basin);addDrivable(basin); // land in the water at the bottom
   // rocks near edge (solid)
   for(let i=0;i<6;i++){const r=ball(rand(1.2,2.2),new THREE.MeshStandardMaterial({color:0x556052,roughness:1}));addSolid(r,rand(-55,55),rand(-25,-15),2);r.position.y=.5;}
   // barrels to push over (the classic stunt) + cones
@@ -591,7 +600,7 @@ function buildPyramids(){
   const stone=new THREE.MeshStandardMaterial({color:0xc2a878,roughness:1});
   for(const[px,pz,sz] of[[-50,-40,28],[40,-60,34],[70,30,24],[-30,60,22]]){
     const p=cone(sz,sz*0.7,stone,4);p.rotation.y=Math.PI/4;p.position.set(px,sz*0.35-0.2,pz);p.castShadow=true;p.receiveShadow=true;world.add(p);
-    drivable.push(p);} // gentler ~35° faces, drivable — scale them
+    addDrivable(p);} // gentler ~35° faces, drivable — scale them
   scatter(camel,12,1.6,8,140,10); scatter(trafficCone,10,.5,1,140,10); scatter(bottle,12,.25,.4,140,10);
   return new THREE.Vector3(0,0,90);
 }
@@ -715,7 +724,7 @@ function buildVegas(){
     const sign=box(w*0.8,6,1,new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.9}));sign.position.set(side*(32-w*0.5-0.6),h*0.7,z);world.add(sign);}
   // THE SPHERE — drivable, crest it and fly off the far side
   const sphere=new THREE.Mesh(new THREE.SphereGeometry(24,40,28),new THREE.MeshStandardMaterial({color:0x101018,emissive:0x4466ff,emissiveIntensity:.45,roughness:.5}));
-  sphere.position.set(0,-15,-70);sphere.castShadow=sphere.receiveShadow=true;world.add(sphere);drivable.push(sphere);
+  sphere.position.set(0,-15,-70);sphere.castShadow=sphere.receiveShadow=true;world.add(sphere);addDrivable(sphere);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(18.7,.7,8,44),new THREE.MeshStandardMaterial({color:0xff66cc,emissive:0xff66cc,emissiveIntensity:.85}));ring.rotation.x=Math.PI/2;ring.position.set(0,.3,-70);world.add(ring);
   addBoost(0,120,0); addBoost(0,45,0); addJumpRamp(0,-32,8,3.5,0);
   scatter(trafficCone,14,.5,1,120,10); scatter(powerPole,6,.5,6,110,16);
@@ -743,7 +752,7 @@ function buildXP(){
   const geo=new THREE.PlaneGeometry(600,600,64,64),pos=geo.attributes.position;
   for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i);pos.setZ(i,Math.sin(x*0.028)*4+Math.cos(y*0.022)*5+Math.sin((x+y)*0.018)*3);}
   geo.computeVertexNormals();
-  const hills=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x5fbf3f,roughness:1}));hills.rotation.x=-Math.PI/2;hills.receiveShadow=true;world.add(hills);drivable.push(hills);
+  const hills=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x5fbf3f,roughness:1}));hills.rotation.x=-Math.PI/2;hills.receiveShadow=true;world.add(hills);addDrivable(hills);
   for(let i=0;i<16;i++){const c=new THREE.Group();for(let j=0;j<5;j++){const p=ball(rand(4,7),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.12,roughness:1}));p.position.set(rand(-7,7),rand(-2,2),rand(-5,5));c.add(p);}c.position.set(rand(-200,200),rand(45,75),rand(-200,200));world.add(c);}
   addJumpRamp(0,-25,7,3.5,0); addBoost(0,25,0);
   return new THREE.Vector3(0,0,0);
@@ -854,7 +863,7 @@ function buildMinefield(){
     pos.setZ(i,h);}
   geo.computeVertexNormals();
   const ground=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x8a7550,roughness:1}));
-  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);drivable.push(ground);
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);addDrivable(ground);
   wallLine(-120,120,120,120,0); wallLine(-120,-120,120,-120,0); wallLine(-120,-120,-120,120,0); wallLine(120,-120,120,120,0);
   // barbed wire strung along the open ground between trenches
   addBarbedWire(-100,-84,100,-84); addBarbedWire(-100,84,100,84);
@@ -876,13 +885,13 @@ function buildSkatepark(){
     if(dBowl<R){const t=dBowl/R;h=-depth*Math.pow(Math.cos(t*Math.PI/2),2);}
     pos.setZ(i,h);}
   geo.computeVertexNormals();
-  const ground=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x9a9aa0,roughness:.85}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);drivable.push(ground);
+  const ground=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x9a9aa0,roughness:.85}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);addDrivable(ground);
   addHalfpipe(-95,0,60,15,10); // stands on the flat, drive in from either open end
   // X-Games mega ramp: tall roll-in, kicker, gap to clear, then a downslope to land on
   const top=addCurvedRamp(95,-44,16,58,Math.PI/3);  // curved roll-in: steep lip flattening out at the bottom
   addSlope(95,-40,16,14,8,0,Math.PI);  // kicker that throws you across the gap
   addSlope(95,2,16,30,9,0,0);          // landing slope on the far side of the gap
-  const deck=box(20,.6,16,new THREE.MeshStandardMaterial({color:0x7a6a58}));deck.position.set(95,top.y-.3,top.z-8);deck.castShadow=true;world.add(deck);drivable.push(deck); // start platform, top face flush with the ramp lip
+  const deck=box(20,.6,16,new THREE.MeshStandardMaterial({color:0x7a6a58}));deck.position.set(95,top.y-.3,top.z-8);deck.castShadow=true;world.add(deck);addDrivable(deck); // start platform, top face flush with the ramp lip
   for(const sx of[-9,9]){const leg=box(1.2,top.y,1.2,new THREE.MeshStandardMaterial({color:0x6a5a48}));leg.position.set(95+sx,top.y/2,top.z-7.5);leg.castShadow=true;world.add(leg);}
   addJumpRamp(0,60,9,5,0);
   for(const[x,z,len] of[[40,-30,14],[-40,30,14]]){const rail=box(.2,.9,len,new THREE.MeshStandardMaterial({color:0xaab0b8,metalness:.7}));addSolid(rail,x,z,.6);rail.position.y=.9;}
@@ -988,7 +997,10 @@ function setChallenges(level){counts={};flags={};curChallenges=(CHALLENGES[level
 function checkChallenges(){let changed=false;for(const ch of curChallenges){if(!ch.done&&ch.test()){ch.done=true;mayhem+=300;flashToast('✅ '+ch.label+'  +300');sfxChime();changed=true;}}if(changed)renderChallenges();}
 let toastT=0;function flashToast(t){const el=document.getElementById('toast');el.textContent=t;el.style.opacity=1;toastT=2.4;}
 
-function groundAt(x,z,fromY){ray.set(new THREE.Vector3(x,fromY+2.5,z),DOWN);const h=ray.intersectObjects(drivable,false);return h.length?h[0].point.y:null;}
+function groundAt(x,z,fromY){
+  // raycasting reads matrixWorld; a freshly-built level hasn't had one computed yet, so the
+  // terrain would still raycast in its unrotated orientation and give garbage heights
+  if(worldDirty){world.updateMatrixWorld(true);worldDirty=false;}ray.set(new THREE.Vector3(x,fromY+2.5,z),DOWN);const h=ray.intersectObjects(drivable,false);return h.length?h[0].point.y:null;}
 function respawn(){gurney.position.copy(spawn);gurney.position.y=groundAt(spawn.x,spawn.z,50)??0;gurney.userData.vy=0;v.speed=0;v.heading=spawnHeading;
   // snap camera behind the gurney so spawn isn't a weird half-second of floor
   camera.position.set(gurney.position.x+Math.sin(spawnHeading)*CAM_D,gurney.position.y+CAM_H,gurney.position.z+Math.cos(spawnHeading)*CAM_D);
@@ -1111,13 +1123,20 @@ function tick(){
 
     // vertical: ground-follow, ramps, and free-fall off edges (Niagara!)
     gr=groundAt(gurney.position.x,gurney.position.z,gurney.position.y);
-    // stick to steep descents instead of launching off them — but only when not already flying upward off a kicker
-    const stick=0.15+(gurney.userData.vy<=0?Math.min(3.2,Math.abs(v.speed)*0.16):0);
     if(gr===null){gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;}
-    else if(gurney.position.y>gr+stick){gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;
-      if(gurney.position.y<=gr){gurney.position.y=gr;gurney.userData.vy=0;}}
-    else{const oldY=gurney.position.y;gurney.position.y=gr; // sit exactly on the surface — lerping toward it makes the gurney sink into ramps
-      gurney.userData.vy=Math.min(14,(gr-oldY)/Math.max(dt,1e-3));airTime=0;} // carry climb speed so ramps launch you
+    else{
+      // leave the ground exactly when the surface drops away faster than gravity would carry you:
+      // hugs concave roll-ins, throws you off convex crests, and needs no arbitrary stick distance
+      const ballistic=gurney.position.y+gurney.userData.vy*dt-0.5*G*dt*dt;
+      if(ballistic>gr+0.02){
+        gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;
+        if(gurney.position.y<=gr){gurney.position.y=gr;gurney.userData.vy=0;airTime=0;}
+      }else{
+        const oldY=gurney.position.y;gurney.position.y=gr; // sit exactly on the surface
+        // carry the surface's own rise/fall rate, so cresting a ramp launches you into a real arc
+        gurney.userData.vy=Math.max(-45,Math.min(16,(gr-oldY)/Math.max(dt,1e-3)));airTime=0;
+      }
+    }
     // gravity along the slope: rip down drop-ins, bleed off climbing, and roll back down if you stall on a wall
     if(gr!==null&&airTime===0){
       const fx=-Math.sin(v.heading),fz=-Math.cos(v.heading),D=1.8; // sample about half a gurney-length ahead
@@ -1142,7 +1161,7 @@ function tick(){
   gurney.rotation.y=v.heading;
   // tilt to match the slope so the gurney rolls along ramps instead of staying flat and sinking through them
   if(!onLoop){
-    if(airTime>0)groundPitch*=Math.max(0,1-2*dt); // level out while airborne
+    if(airTime>0)groundPitch=Math.atan2(gurney.userData.vy,Math.max(6,Math.abs(v.speed))); // in the air the nose follows the arc
     gurney.rotation.x+=(groundPitch-gurney.rotation.x)*Math.min(1,12*dt);
   }
 
