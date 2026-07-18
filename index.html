@@ -229,9 +229,9 @@ applyRider();
 // ---------- world ----------
 let world=new THREE.Group(); scene.add(world);
 let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
-let barnRef=null, fishGroup=null;
+let barnRef=null, fishGroup=null, ferrisRef=null;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
-function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;}
+function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)drivable.push(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
@@ -616,6 +616,40 @@ function powerPole(){const g=new THREE.Group();const wood=new THREE.MeshStandard
   const cross=box(2.6,.2,.2,wood);cross.position.y=6.6;g.add(cross);const cross2=box(1.8,.2,.2,wood);cross2.position.y=5.8;g.add(cross2);
   for(const sx of[-1.1,0,1.1]){const ins=cyl(.07,.07,.22,new THREE.MeshStandardMaterial({color:0x3a4a5a}),6);ins.position.set(sx,6.8,0);g.add(ins);}
   for(const sx of[-.7,.7]){const ins=cyl(.07,.07,.22,new THREE.MeshStandardMaterial({color:0x3a4a5a}),6);ins.position.set(sx,6,0);g.add(ins);}return g;}
+// tear the ferris wheel off its mounts; it becomes a free-rolling wrecking ball
+function knockFerrisLoose(dx,dz){
+  if(!ferrisRef||ferrisRef.userData.loose)return;
+  const u=ferrisRef.userData; u.loose=true;
+  let len=Math.hypot(dx,dz); if(len<1e-3){dx=1;dz=0;len=1;}
+  u.dir={x:dx/len,z:dz/len}; u.roll=26;
+  ferrisRef.rotation.y=Math.atan2(-u.dir.z,u.dir.x); // wheel plane lines up with the roll direction
+  const i=solids.indexOf(u.solid); if(i>=0)solids.splice(i,1); // let it roll free
+  if(u.legs)for(const l of u.legs.children)l.rotation.x=rand(-.5,.5); // leave the mounts buckled
+  flags.ferris=true; shake=Math.min(1.6,shake+1.3); mayhem+=500;
+  flashToast('🎡 WHEEL LOOSE  +500'); sfxSmash(9); checkChallenges();
+}
+function stepFerris(dt){
+  if(!ferrisRef||!ferrisRef.userData.loose)return;
+  const u=ferrisRef.userData,p=ferrisRef.position;
+  u.roll=Math.max(9,u.roll-1.1*dt); // keeps rolling for a long time
+  p.x+=u.dir.x*u.roll*dt; p.z+=u.dir.z*u.roll*dt;
+  const B=155; let turned=false;
+  if(Math.abs(p.x)>B){p.x=Math.sign(p.x)*B;u.dir.x*=-1;turned=true;}
+  if(Math.abs(p.z)>B){p.z=Math.sign(p.z)*B;u.dir.z*=-1;turned=true;}
+  if(turned){ferrisRef.rotation.y=Math.atan2(-u.dir.z,u.dir.x);shake=Math.min(1.6,shake+.35);}
+  p.y=(groundAt(p.x,p.z,p.y+24)??0)+16;
+  ferrisRef.rotation.z-=u.roll/16*dt; // spin matches the ground speed
+  // flatten whatever it rolls over
+  for(const pr of props){if(!pr.asleep)continue;
+    if(Math.hypot(pr.pos.x-p.x,pr.pos.z-p.z)<8){
+      const ax=pr.pos.x-p.x,az=pr.pos.z-p.z,d=Math.hypot(ax,az)||1;
+      pr.vel.set(ax/d*16,11,az/d*16); pr.spin.set(rand(-9,9),rand(-9,9),rand(-9,9)); pr.asleep=false;
+      smashed++; smashEl.textContent=smashed; mayhem+=12; counts[pr.type]=(counts[pr.type]||0)+1; sfxSmash(pr.mass); checkChallenges();}}
+  // shoves the player around too
+  if(Math.hypot(gurney.position.x-p.x,gurney.position.z-p.z)<9){
+    const ax=gurney.position.x-p.x,az=gurney.position.z-p.z,d=Math.hypot(ax,az)||1;
+    gurney.position.x+=ax/d*24*dt; gurney.position.z+=az/d*24*dt; shake=Math.min(1.6,shake+.5);}
+}
 function igniteBarn(){if(!barnRef||barnRef.userData.onFire)return;barnRef.userData.onFire=true;const flames=[],smoke=[];
   // flames sit ON the roof (barn body tops out at y=12, roof peak ~20) so they're actually visible
   for(let i=0;i<24;i++){const f=cone(rand(1.4,3),rand(5,11),new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(rand(0.02,0.13),1,0.55)}),6);
@@ -851,11 +885,21 @@ function buildCoaster(){
   // the loop: a real track sitting on the ground at the origin — build speed down the straight and drive up into it
   addLoopTrack(LOOP_X,LOOP_Y,LOOP_Z0,LOOP_Z1,LOOP_R,7);
   addBoost(0,-52,0); addBoost(0,52,0); // run-ups into either mouth
-  // ferris wheel landmark
-  const hub=new THREE.Group();
+  // ferris wheel — ram the base hard enough and it comes off its hinges and rolls away
+  const hub=new THREE.Group(); hub.rotation.order='YXZ';
   const rim=new THREE.Mesh(new THREE.TorusGeometry(16,.6,10,28),new THREE.MeshStandardMaterial({color:0x2dd4ff,emissive:0x2dd4ff,emissiveIntensity:.3}));hub.add(rim);
-  for(let i=0;i<8;i++){const a=i/8*6.283,cab=box(2,2,2,new THREE.MeshStandardMaterial({color:[0xff2d6e,0xffd02d,0x39ff88,0x9b5cff][i%4]}));cab.position.set(Math.cos(a)*16,Math.sin(a)*16,0);hub.add(cab);}
-  hub.position.set(-90,18,0);world.add(hub);solids.push({position:new THREE.Vector3(-90,0,0),radius:5});
+  const spokeM=new THREE.MeshStandardMaterial({color:0xdfe6ee,metalness:.5});
+  for(let i=0;i<8;i++){const a=i/8*6.283;
+    const sp=cyl(.18,.18,32,spokeM,6);sp.rotation.z=Math.PI/2;sp.rotation.z=a+Math.PI/2;hub.add(sp);
+    const cab=box(2,2,2,new THREE.MeshStandardMaterial({color:[0xff2d6e,0xffd02d,0x39ff88,0x9b5cff][i%4]}));cab.position.set(Math.cos(a)*16,Math.sin(a)*16,0);hub.add(cab);}
+  hub.position.set(-90,17,0);hub.traverse(o=>o.castShadow=true);world.add(hub);
+  // A-frame legs holding it up (they stay behind when it tears loose)
+  const legM=new THREE.MeshStandardMaterial({color:0x8a8f95,metalness:.4});
+  const legs=new THREE.Group();
+  for(const sz of[-5,5])for(const sx of[-9,9]){const leg=cyl(.7,.9,19,legM,8);leg.position.set(sx,9.5,sz);leg.rotation.z=sx>0?-.42:.42;legs.add(leg);}
+  legs.position.set(-90,0,0);legs.traverse(o=>o.castShadow=true);world.add(legs);
+  const ferrisSolid={position:new THREE.Vector3(-90,0,0),radius:5};solids.push(ferrisSolid);
+  ferrisRef=hub; hub.userData.loose=false; hub.userData.solid=ferrisSolid; hub.userData.legs=legs;
   scatter(trafficCone,10,.5,1,140,30); scatter(strollerLady,8,1,2,130,30); scatter(canadian,10,.5,1,130,30);
   spawnHeading=Math.PI; // face the corkscrew
   return new THREE.Vector3(0,0,-62);
@@ -923,7 +967,7 @@ const CHALLENGES={
   trampoline:[['Catch big air',()=>flags.air],['Pop 10 beach balls',()=>c('beachBall',10)],['Bump 6 bouncers',()=>c('gymGoer',6)]],
   minefield:[['Detonate 8 mines',()=>c('mine',8)],['Bottom out in a trench',()=>gurney.position.y<-4.5],['Catch big air',()=>flags.air]],
   skatepark:[['Drop into the bowl',()=>gurney.position.y<-8],['Ride the half-pipe wall',()=>Math.abs(gurney.position.x+95)<40&&gurney.position.y>5],['Clear the mega-ramp gap',()=>Math.abs(gurney.position.x-95)<20&&gurney.position.z>20&&flags.air]],
-  coaster:[['Loop the loop',()=>flags.loop],['Visit the ferris wheel',()=>Math.hypot(gurney.position.x+90,gurney.position.z)<20],['Smash 8 cones',()=>c('trafficCone',8)]],
+  coaster:[['Loop the loop',()=>flags.loop],['Knock the ferris wheel off its hinges',()=>flags.ferris],['Smash 8 cones',()=>c('trafficCone',8)]],
   hospital:[['Total 8 wheelchairs',()=>c('wheelchair',8)],['Scatter 10 IV stands',()=>c('ivStand',10)],['Escape through the exit',()=>gurney.position.z>70&&Math.abs(gurney.position.x)<9]],
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
@@ -1074,6 +1118,9 @@ function tick(){
   if(airTime>0.7)flags.air=true;
   if(gurney.position.y<-40)flags.falls=true;
   if(current==='vegas'&&Math.hypot(gurney.position.x,gurney.position.z+70)<22&&gurney.position.y>6)flags.sphere=true;
+  if(ferrisRef&&!ferrisRef.userData.loose&&Math.abs(v.speed)>18){ // ram the base at speed to tear it off
+    const dx=ferrisRef.position.x-gurney.position.x,dz=ferrisRef.position.z-gurney.position.z;
+    if(Math.hypot(dx,dz)<12)knockFerrisLoose(dx,dz);}
   if(gurney.position.y<-65)respawn();
   for(const bp of boosts){if(Math.hypot(gurney.position.x-bp.position.x,gurney.position.z-bp.position.z)<bp.radius)v.speed=Math.max(v.speed,36);}
   for(const bp of bounces){if(gr!==null&&gurney.position.y<=gr+0.2&&gurney.position.x>bp.x1&&gurney.position.x<bp.x2&&gurney.position.z>bp.z1&&gurney.position.z<bp.z2){
@@ -1086,6 +1133,7 @@ function tick(){
   }
 
   stepProps(dt);
+  stepFerris(dt);
 
   if(barnRef&&barnRef.userData.onFire){const t=performance.now()*0.008;
     const fl=barnRef.userData.flames;for(let i=0;i<fl.length;i++)fl[i].scale.set(1,0.6+0.6*Math.abs(Math.sin(t*3+i)),1);
