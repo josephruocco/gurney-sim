@@ -237,7 +237,19 @@ function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
 function addSolid(g,x,z,r){g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);world.add(g);solids.push({position:g.position,radius:r});}
 function addProp(g,x,z,r,mass,type='thing'){g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);world.add(g);
-  props.push({g,pos:g.position,radius:r,mass,type,vel:new THREE.Vector3(),spin:new THREE.Vector3(),asleep:true});}
+  // cache the local bounding-box corners so a tumbled prop can rest on its lowest point instead of
+  // burying its origin in the floor (models are built with the origin at their base)
+  g.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(g),mn=bb.min.clone().sub(g.position),mx=bb.max.clone().sub(g.position),corners=[];
+  for(const X of[mn.x,mx.x])for(const Y of[mn.y,mx.y])for(const Z of[mn.z,mx.z])corners.push(new THREE.Vector3(X,Y,Z));
+  props.push({g,pos:g.position,radius:r,mass,type,corners,vel:new THREE.Vector3(),spin:new THREE.Vector3(),asleep:true});}
+const _pm4=new THREE.Matrix4(), _pv3=new THREE.Vector3();
+function propLowestY(p){ // how far the prop's geometry hangs below its origin at its current rotation
+  if(!p.corners)return 0;
+  _pm4.makeRotationFromEuler(p.g.rotation);
+  let min=Infinity;
+  for(const c of p.corners){_pv3.copy(c).applyMatrix4(_pm4);if(_pv3.y<min)min=_pv3.y;}
+  return min;}
 function addJumpRamp(x,z,len,rise,yaw=0){const ang=Math.atan2(rise,len),L=Math.hypot(len,rise);
   const g=new THREE.Group();const r=box(5,.3,L,new THREE.MeshStandardMaterial({color:0xe0a020,roughness:.7}));
   r.rotation.x=ang;r.position.y=rise/2;g.add(r);
@@ -1037,7 +1049,8 @@ function stepProps(dt){
       continue;}
     p.vel.y-=G*dt; p.pos.addScaledVector(p.vel,dt);
     const gr=groundAt(p.pos.x,p.pos.z,p.pos.y);
-    if(gr!==null && p.pos.y<=gr){p.pos.y=gr;p.vel.y*=-0.3;p.vel.x*=0.6;p.vel.z*=0.6;p.spin.multiplyScalar(0.6);
+    const low=propLowestY(p); // rest on the lowest corner of the tumbled shape, not on the origin
+    if(gr!==null && p.pos.y+low<=gr){p.pos.y=gr-low;p.vel.y*=-0.3;p.vel.x*=0.6;p.vel.z*=0.6;p.spin.multiplyScalar(0.6);
       if(p.vel.lengthSq()<0.4){p.vel.set(0,0,0);p.asleep=true;}}
     else if(gr===null && p.pos.y<-70){p.asleep=true;p.g.visible=false;} // fell into the void
     p.g.rotation.x+=p.spin.x*dt; p.g.rotation.y+=p.spin.y*dt; p.g.rotation.z+=p.spin.z*dt;
