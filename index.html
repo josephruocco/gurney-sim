@@ -31,13 +31,21 @@
   .overlay .ctrl{font-size:12px;opacity:.55;max-width:560px}
   .overlay button{margin-top:18px;font-size:20px;font-weight:700;padding:13px 30px;border:0;border-radius:10px;
                   background:#2e6cf0;color:#fff;cursor:pointer}
+  #menuLevels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;max-width:700px;margin:16px 0 4px}
+  #menuLevels button{margin:0;font-size:13px;font-weight:600;padding:10px 6px;border-radius:8px;background:#2b3340;color:#dfe6ee}
+  #menuLevels button:hover{background:#3d4a5c}
+  .menurow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center}
+  #randomBtn{background:#7a4ea0}
+  #menuBtn{background:#4a3a5c;color:#e8d8ff}
   #touch{position:fixed;bottom:16px;left:0;right:0;z-index:15;display:none;justify-content:space-between;padding:0 20px;pointer-events:none}
   #touch .grp{display:flex;gap:12px;pointer-events:auto}
   #touch button{width:66px;height:66px;font-size:26px;border-radius:50%;border:0;background:rgba(43,51,64,.82);color:#fff}
 </style>
 </head>
 <body>
-<div id="hud">Location: <b id="loc">Parking Garage</b><br>Rider: <b id="rider">Supine patient</b><br>Speed: <b id="speed">0</b> km/h<br>Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" style="color:#ff9f43;font-weight:700"></span></div>
+<div id="hud">Location: <b id="loc">Parking Garage</b><br>Rider: <b id="rider">Supine patient</b><br>Speed: <b id="speed">0</b> km/h
+<svg id="speedoSvg" viewBox="0 0 120 66" style="width:90px;display:block;margin:2px 0 4px"><path d="M10,60 A50,50 0 0 1 110,60" fill="none" stroke="#2b3340" stroke-width="7" stroke-linecap="round"/><line id="needle" x1="60" y1="60" x2="60" y2="16" stroke="#ffd34d" stroke-width="3" stroke-linecap="round" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="3.5" fill="#ffd34d"/></svg>
+Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" style="color:#ff9f43;font-weight:700"></span></div>
 <div id="chal"></div>
 <div id="toast"></div>
 <div id="timer"></div>
@@ -47,9 +55,13 @@
 </div>
 <div id="title" class="overlay"><div>
   <h1>GURNEY</h1>
-  <p>Wreak havoc on a runaway hospital gurney.</p>
-  <button id="playBtn">▶ PLAY</button>
-  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · M cycle mods · 1-0, H &amp; O switch worlds · Esc pause</p>
+  <p>Wreak havoc on a runaway hospital gurney. Pick a world:</p>
+  <div id="menuLevels"></div>
+  <div class="menurow">
+    <button id="randomBtn">🎲 Random Level</button>
+    <button id="playBtn">▶ PLAY</button>
+  </div>
+  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · M cycle mods · K mute · Esc pause</p>
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
@@ -67,15 +79,23 @@
     <button data-lvl="xp">Bliss</button>
     <button data-lvl="highway">Highway</button>
     <button data-lvl="ohio">Ohio</button>
+    <button data-lvl="stadium">Stadium</button>
+    <button data-lvl="trampoline">Trampoline</button>
+    <button data-lvl="minefield">Minefield</button>
+    <button data-lvl="skatepark">Skatepark</button>
+    <button data-lvl="coaster">Coaster</button>
   </div>
   <div class="row">
     <button id="riderBtn">Rider (R)</button>
     <button id="spinBtn">Spin (F)</button>
     <button id="modBtn">Mod: Stock (M)</button>
+    <button id="muteBtn">🔊 Sound (K)</button>
     <button id="runBtn">⏱ 90s Run</button>
+    <button id="diceBtn">🎲 Random</button>
+    <button id="menuBtn">☰ Menu</button>
   </div>
 </div>
-<div id="help">W/S accel · A/D steer · Space brake · Shift boost · 1-0 location · R rider · F spin · M mods · yellow ramps = air · green pads = speed · clear the checklist for bonus mayhem</div>
+<div id="help">W/S accel · A/D steer · Space brake · Shift boost · 1-0 location · R rider · F spin · M mods · K mute · yellow ramps = air · green pads = speed · clear the checklist for bonus mayhem</div>
 
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -119,7 +139,7 @@ function buildGurney(){
   g.userData.stockWheels=stockWheels;
   return g;
 }
-const gurney=buildGurney(); gurney.userData.vy=0; scene.add(gurney);
+const gurney=buildGurney(); gurney.userData.vy=0; gurney.rotation.order='YXZ'; scene.add(gurney); // YXZ: yaw first, then pitch about the gurney's own left-right axis
 
 // ---------- gurney mods (cosmetic only) ----------
 const MOD_NAMES=['Stock','Monster Wheels','Rocket Boosters','IV Drip','Shopping Cart','Sled Dogs','Full Self-Driving'];
@@ -132,10 +152,10 @@ const modGroups=[null,null,null,null,null,null,null];
   gurney.add(monster); modGroups[1]=monster;
 
   const rocketM=new THREE.MeshStandardMaterial({color:0x2a2e34,metalness:.6,roughness:.3}),flameM=new THREE.MeshBasicMaterial({color:0xff8a2a});
-  const rockets=new THREE.Group();
+  const rockets=new THREE.Group(); const flames=[];
   for(const sx of[-0.55,0.55]){const tube=cyl(.14,.14,.9,rocketM,10);tube.rotation.x=Math.PI/2;tube.position.set(sx,.9,1.9);rockets.add(tube);
-    const flame=cone(.14,.5,flameM,8);flame.rotation.x=Math.PI/2;flame.position.set(sx,.9,2.45);rockets.add(flame);}
-  gurney.add(rockets); modGroups[2]=rockets;
+    const flame=cone(.14,.5,flameM,8);flame.rotation.x=Math.PI/2;flame.position.set(sx,.9,2.45);rockets.add(flame);flames.push(flame);}
+  gurney.add(rockets); modGroups[2]=rockets; rockets.userData.flames=flames;
 
   const ivM=new THREE.MeshStandardMaterial({color:0xaab0b8,metalness:.5});
   const iv=new THREE.Group();
@@ -200,7 +220,7 @@ function buildSurfer(){const g=new THREE.Group();
   for(const s of[-1,1]){const a=cap(.1,.7,SKIN);a.position.set(s*.45,2.85,-.05);a.rotation.z=s*1;g.add(a);}
   return g;}
 const riderRoot=new THREE.Group(); const supine=buildSupine(),surfer=buildSurfer();
-riderRoot.add(supine,surfer); scene.add(riderRoot);
+riderRoot.add(supine,surfer); riderRoot.rotation.order='YXZ'; scene.add(riderRoot);
 let riderMode='supine';
 function applyRider(){supine.visible=riderMode==='supine';surfer.visible=riderMode==='surfer';
   document.getElementById('rider').textContent=riderMode==='supine'?'Supine patient':'Surfer';}
@@ -208,10 +228,10 @@ applyRider();
 
 // ---------- world ----------
 let world=new THREE.Group(); scene.add(world);
-let drivable=[], solids=[], props=[], boosts=[], ceilings=[];
+let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
 let barnRef=null, fishGroup=null;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
-function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];barnRef=null;fishGroup=null;}
+function clearWorld(){scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)drivable.push(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
@@ -222,14 +242,91 @@ function addJumpRamp(x,z,len,rise,yaw=0){const ang=Math.atan2(rise,len),L=Math.h
   const g=new THREE.Group();const r=box(5,.3,L,new THREE.MeshStandardMaterial({color:0xe0a020,roughness:.7}));
   r.rotation.x=ang;r.position.y=rise/2;g.add(r);
   g.position.set(x,0,z);g.rotation.y=yaw;g.traverse(o=>o.castShadow=true);world.add(g);drivable.push(r);}
+// wide ramp that can start off the ground (mega-ramp roll-ins / landing slopes). High end faces -z before yaw.
+function addSlope(x,z,w,run,rise,baseY=0,yaw=0,col=0xc8a060){const ang=Math.atan2(rise,run),L=Math.hypot(run,rise);
+  const g=new THREE.Group();const r=box(w,.6,L,new THREE.MeshStandardMaterial({color:col,roughness:.8}));
+  r.rotation.x=ang;r.position.y=baseY+rise/2;g.add(r);
+  g.position.set(x,0,z);g.rotation.y=yaw;g.traverse(o=>o.castShadow=true);world.add(g);drivable.push(r);return r;}
+// concave roll-in: steep at the lip, curving out to flat at the bottom (mega-ramp style). Bottom sits at (x,zBase), rising toward -z.
+// Returns the top-of-ramp {y,z} so callers can butt a start deck against it.
+function addCurvedRamp(x,zBase,w,R,maxA,col=0xc8a060){
+  const mat=new THREE.MeshStandardMaterial({color:col,roughness:.8});
+  const segs=30,th=.6;
+  for(let i=0;i<segs;i++){
+    const a0=i/segs*maxA,a1=(i+1)/segs*maxA,am=(a0+a1)/2,segLen=R*(a1-a0)*1.12;
+    const s=box(w,th,segLen,mat);
+    // drop each box by half its vertical thickness so the TOP face lies on the curve — otherwise the ramp foot sits proud of the ground
+    s.position.set(x,R-R*Math.cos(am)-th/2/Math.cos(am),zBase-R*Math.sin(am));
+    s.rotation.x=am;s.castShadow=true;s.receiveShadow=true;world.add(s);drivable.push(s);
+  }
+  // report the actual top-face outer corner of the last segment so callers can butt a deck flush against it
+  const amL=(segs-.5)/segs*maxA, segLenL=R*(maxA/segs)*1.12;
+  return {y:R-R*Math.cos(amL)+segLenL/2*Math.sin(amL), z:zBase-R*Math.sin(amL)-segLenL/2*Math.cos(amL)};
+}
+// U-shaped half-pipe built as a structure sitting on flat ground: flat floor + two curved transitions + decks
+function addHalfpipe(cx,cz,len,R,W){
+  const mat=new THREE.MeshStandardMaterial({color:0x9aa0a8,roughness:.85});
+  const deckM=new THREE.MeshStandardMaterial({color:0x7a6a58,roughness:.9});
+  const floor=box(W*2,.6,len,mat);floor.position.set(cx,.3,cz);floor.receiveShadow=true;world.add(floor);drivable.push(floor);
+  const segs=12,maxA=Math.PI/2*0.8;
+  for(const side of[-1,1]){
+    for(let i=0;i<segs;i++){
+      const a0=i/segs*maxA,a1=(i+1)/segs*maxA,am=(a0+a1)/2,segLen=R*(a1-a0)*1.08;
+      const s=box(segLen,.6,len,mat);
+      s.position.set(cx+side*(W+R*Math.sin(am)),R-R*Math.cos(am)+.3,cz);
+      s.rotation.z=side*am;s.receiveShadow=true;s.castShadow=true;world.add(s);drivable.push(s);
+    }
+    const topY=R-R*Math.cos(maxA),topX=side*(W+R*Math.sin(maxA));
+    const deck=box(12,.6,len,deckM);deck.position.set(cx+topX+side*6,topY+.3,cz);deck.castShadow=true;world.add(deck);drivable.push(deck);
+    // coping rail along the lip
+    const cope=cyl(.18,.18,len,new THREE.MeshStandardMaterial({color:0xd8d8d8,metalness:.7}),8);
+    cope.rotation.x=Math.PI/2;cope.position.set(cx+topX,topY+.7,cz);world.add(cope);
+  }
+}
+// full vertical loop you drive onto: visible track ribbon + approach ramps at the base
+function addLoopTrack(cx,cy,cz,R,W){
+  const mat=new THREE.MeshStandardMaterial({color:0xd83a3a,metalness:.35,roughness:.45});
+  const segs=30,segLen=2*Math.PI*R/segs*1.06;
+  for(let i=0;i<segs;i++){const a=(i+.5)/segs*Math.PI*2;
+    const s=box(W,.5,segLen,mat);
+    s.position.set(cx,cy-Math.cos(a)*R,cz+Math.sin(a)*R);
+    s.rotation.x=-a;s.castShadow=true;world.add(s);} // -a: box +z maps to (-sinθ,cosθ), tangent here is (sin a,cos a)
+  for(const side of[-1,1]){ // side rails so it reads as a track
+    for(let i=0;i<segs;i++){const a=(i+.5)/segs*Math.PI*2;
+      const r=box(.35,1.1,segLen,new THREE.MeshStandardMaterial({color:0xf0f0f0}));
+      r.position.set(cx+side*W/2,cy-Math.cos(a)*R,cz+Math.sin(a)*R);r.rotation.x=-a;world.add(r);}}
+  // base of the loop already sits at ground level, so you just roll straight on — mark the run-in
+  for(const side of[-1,1]){const strip=box(W,.06,26,new THREE.MeshStandardMaterial({color:0xd83a3a,emissive:0xd83a3a,emissiveIntensity:.25}));
+    strip.position.set(cx,.08,cz+side*20);world.add(strip);}
+}
 function addBoost(x,z,yaw=0){const g=new THREE.Group();
   const pad=new THREE.Mesh(new THREE.PlaneGeometry(4,8),new THREE.MeshStandardMaterial({color:0x0d2a17,emissive:0x39ff88,emissiveIntensity:.6,side:THREE.DoubleSide}));pad.rotation.x=-Math.PI/2;g.add(pad);
   for(let k=0;k<3;k++){const c=new THREE.Mesh(new THREE.PlaneGeometry(2.6,.7),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.9,side:THREE.DoubleSide}));c.rotation.x=-Math.PI/2;c.position.set(0,.02,-2.2+k*1.6);g.add(c);}
   g.position.set(x,0.06,z);g.rotation.y=yaw;world.add(g);boosts.push({position:new THREE.Vector3(x,0,z),radius:3});}
+function addBounce(x,z,w,d){const pad=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshStandardMaterial({color:0x1a2a4a,emissive:0x4a7aff,emissiveIntensity:.35}));
+  pad.rotation.x=-Math.PI/2;pad.position.set(x,0.05,z);world.add(pad);
+  const seam=new THREE.MeshStandardMaterial({color:0x0a1428});
+  for(const dx of[-w/2,w/2]){const s=box(.15,.04,d,seam);s.position.set(x+dx,0.07,z);world.add(s);}
+  for(const dz of[-d/2,d/2]){const s=box(w,.04,.15,seam);s.position.set(x,0.07,z+dz);world.add(s);}
+  bounces.push({x1:x-w/2,x2:x+w/2,z1:z-d/2,z2:z+d/2});}
 function wallLine(x1,z1,x2,z2,fy){const len=Math.hypot(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2,ang=Math.atan2(z2-z1,x2-x1);
   const w=box(len,1.4,0.5,new THREE.MeshStandardMaterial({color:0x8a9099,metalness:.3,roughness:.6}));w.position.set(cx,fy+0.7,cz);w.rotation.y=-ang;world.add(w);
   const n=Math.ceil(len/3);for(let i=0;i<=n;i++){const t=i/n;solids.push({position:new THREE.Vector3(x1+(x2-x1)*t,0,z1+(z2-z1)*t),radius:1.6});}}
 function colliderLine(x1,z1,x2,z2){const n=Math.ceil(Math.hypot(x2-x1,z2-z1)/3);for(let i=0;i<=n;i++){const t=i/n;solids.push({position:new THREE.Vector3(x1+(x2-x1)*t,0,z1+(z2-z1)*t),radius:1.8});}} // colliders block at all heights (xz only)
+// leaning barbed-wire fence: posts, three strands, barbs. Blocks the gurney.
+function addBarbedWire(x1,z1,x2,z2,h=1.9){
+  const len=Math.hypot(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2,ang=Math.atan2(z2-z1,x2-x1);
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0x54432f,roughness:1});
+  const wire=new THREE.MeshStandardMaterial({color:0x9aa0a6,metalness:.6,roughness:.5});
+  const posts=Math.max(2,Math.round(len/7));
+  for(let i=0;i<=posts;i++){const p=cyl(.11,.14,h,wood,6);p.position.set(-len/2+i/posts*len,h/2,0);p.rotation.z=rand(-.06,.06);g.add(p);}
+  for(const yy of[h*.42,h*.68,h*.94]){
+    const w=cyl(.035,.035,len,wire,5);w.rotation.z=Math.PI/2;w.position.set(0,yy,0);g.add(w);}
+  for(let d=2;d<len;d+=3){const barb=box(.13,.13,.13,wire);barb.position.set(-len/2+d,h*.68,0);barb.rotation.set(.7,.7,0);g.add(barb);}
+  g.position.set(cx,0,cz);g.rotation.y=-ang;g.traverse(o=>o.castShadow=true);world.add(g);
+  colliderLine(x1,z1,x2,z2);
+}
 
 // knockable prop meshes (origin at base)
 function trashCan(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0x3f5d4a,metalness:.4,roughness:.6});
@@ -328,6 +425,33 @@ function possum(){const g=new THREE.Group();const m=new THREE.MeshStandardMateri
   const body=ball(.35,m);body.scale.set(1.5,.8,1);body.position.y=.35;g.add(body);
   const head=ball(.22,m);head.position.set(.5,.4,0);g.add(head);
   const tail=cyl(.05,.02,.7,new THREE.MeshStandardMaterial({color:0xd8b8a8}),6);tail.rotation.z=Math.PI/2;tail.position.set(-.55,.3,0);g.add(tail);
+  return g;}
+function soccerBall(){const g=new THREE.Group();const white=new THREE.MeshStandardMaterial({color:0xf0f0f0,roughness:.5});
+  const b=ball(.35,white);b.position.y=.35;g.add(b);const blk=new THREE.MeshStandardMaterial({color:0x1a1a1a});
+  for(let k=0;k<6;k++){const patch=new THREE.Mesh(new THREE.CircleGeometry(.12,5),blk);const a=rand(0,6.28),el=rand(-1,1);
+    patch.position.set(.35*Math.cos(a)*Math.sqrt(1-el*el),.35+.35*el,.35*Math.sin(a)*Math.sqrt(1-el*el));patch.lookAt(patch.position.clone().multiplyScalar(2).setY(patch.position.y-.35));g.add(patch);}
+  return g;}
+function soccerPlayer(col){const g=new THREE.Group();const jersey=new THREE.MeshStandardMaterial({color:col??[0xd8342a,0x2a5fd8][Math.random()<.5?0:1]});
+  for(const sx of[-.18,.18]){const leg=cap(.13,.55,PANTS);leg.position.set(sx,.6,0);leg.rotation.x=sx>0?-.4:.4;g.add(leg);}
+  const t=cap(.24,.5,jersey);t.position.set(0,1.4,0);g.add(t);
+  const hd=ball(.24,SKIN);hd.position.set(0,1.95,0);g.add(hd);const hr=ball(.26,HAIR);hr.position.set(0,2.05,0);hr.scale.set(1,.6,1);g.add(hr);
+  for(const s of[-1,1]){const a=cap(.09,.5,jersey);a.position.set(s*.32,1.45,0);a.rotation.z=s*.6;g.add(a);}
+  return g;}
+function mine(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0x3a3f3a,roughness:.7,metalness:.3});
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(.4,14,8,0,6.28,0,Math.PI/2),m);dome.position.y=.15;g.add(dome);
+  const band=cyl(.42,.42,.08,new THREE.MeshStandardMaterial({color:0xd83a3a,emissive:0xd83a3a,emissiveIntensity:.5}),16);band.position.y=.2;g.add(band);
+  const spike=cone(.05,.15,m,6);spike.position.y=.62;g.add(spike);
+  return g;}
+function beachBall(){const g=new THREE.Group();const cols=[0xff5050,0xffe050,0x50a0ff,0x50ff8a];
+  for(let k=0;k<4;k++){const seg=new THREE.Mesh(new THREE.SphereGeometry(.4,8,8,k*Math.PI/2,Math.PI/2),new THREE.MeshStandardMaterial({color:cols[k]}));seg.position.y=.4;g.add(seg);}
+  return g;}
+function skater(){const g=new THREE.Group();const jersey=new THREE.MeshStandardMaterial({color:[0x9b5cff,0xff8a2a,0x39ff88][Math.floor(Math.random()*3)]});
+  for(const sx of[-.15,.15]){const leg=cap(.12,.5,PANTS);leg.position.set(sx,.55,0);leg.rotation.z=sx>0?-.15:.15;g.add(leg);}
+  const t=cap(.24,.5,jersey);t.position.set(0,1.35,0);g.add(t);
+  const hd=ball(.24,SKIN);hd.position.set(0,1.9,0);g.add(hd);const hr=ball(.26,HAIR);hr.position.set(0,2,0);hr.scale.set(1,.5,1);g.add(hr);
+  for(const s of[-1,1]){const a=cap(.09,.5,jersey);a.position.set(s*.3,1.5,-.1);a.rotation.x=-.6;g.add(a);}
+  const deck=box(.25,.06,.9,new THREE.MeshStandardMaterial({color:0x2b1f16}));deck.position.y=.15;g.add(deck);
+  for(const sz of[-.35,.35]){const w=cyl(.06,.06,.28,new THREE.MeshStandardMaterial({color:0xd8d8d8}),8);w.rotation.z=Math.PI/2;w.position.set(0,.08,sz);g.add(w);}
   return g;}
 
 const rand=(a,b)=>a+Math.random()*(b-a);
@@ -428,7 +552,9 @@ function buildGym(){
   // mirror walls
   const mirror=new THREE.MeshStandardMaterial({color:0xaec4d4,metalness:.6,roughness:.12});
   for(const[x,z,w,d] of[[0,-58,120,2],[0,58,120,2],[-58,0,2,120],[58,0,2,120]]){
-    const wall=box(w,12,d,mirror);wall.position.set(x,6,z);wall.castShadow=true;world.add(wall);solids.push({position:wall.position,radius:Math.max(w,d)*0.5});}
+    const wall=box(w,12,d,mirror);wall.position.set(x,6,z);wall.castShadow=true;world.add(wall);}
+  // walls collide as lines — a single circular solid per wall has radius 60 and swallows the whole gym floor
+  colliderLine(-57,-57,57,-57); colliderLine(-57,57,57,57); colliderLine(-57,-57,-57,57); colliderLine(57,-57,57,57);
   // ceiling light panels so the gym is actually lit
   for(const x of[-30,0,30])for(const z of[-30,0,30]){const p=box(7,.2,7,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.55}));p.position.set(x,11.5,z);world.add(p);}
   // squat racks (back wall) + treadmills (front) stay solid stations
@@ -588,8 +714,119 @@ function buildOhio(){
   return new THREE.Vector3(0,0,120);
 }
 
-const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio};
-const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio'};
+function buildStadium(){
+  scene.background=new THREE.Color(0x6fa8dc);scene.fog=new THREE.Fog(0x6fa8dc,170,440);hemi.intensity=.95;
+  slab(170,.4,160,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x2f8f3a,roughness:1}),{drive:true});
+  const white=new THREE.MeshStandardMaterial({color:0xffffff});
+  const centerLine=box(.3,.02,64,white);centerLine.rotation.y=Math.PI/2;centerLine.position.set(0,.01,0);world.add(centerLine);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(8.7,9,40),new THREE.MeshStandardMaterial({color:0xffffff,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(0,.02,0);world.add(ring);
+  const touch1=box(.3,.02,110,white);touch1.position.set(-32,.01,0);world.add(touch1);
+  const touch2=box(.3,.02,110,white);touch2.position.set(32,.01,0);world.add(touch2);
+  const goalLine1=box(64,.02,.3,white);goalLine1.position.set(0,.01,-55);world.add(goalLine1);
+  const goalLine2=box(64,.02,.3,white);goalLine2.position.set(0,.01,55);world.add(goalLine2);
+  function buildGoal(side){const g=new THREE.Group();
+    for(const sx of[-4,4]){const post=box(.2,3,.2,white);post.position.set(sx,1.5,0);g.add(post);}
+    const bar=box(8.2,.2,.2,white);bar.position.set(0,3,0);g.add(bar);
+    const net=new THREE.Mesh(new THREE.PlaneGeometry(8,3),new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.18,side:THREE.DoubleSide}));net.position.set(0,1.5,.8*side);g.add(net);
+    g.position.set(0,0,55*side);g.traverse(o=>o.castShadow=true);world.add(g);
+    for(const sx of[-4,4])solids.push({position:new THREE.Vector3(sx,0,55*side),radius:.5});} // posts only — mouth stays open to drive through
+  buildGoal(-1); buildGoal(1);
+  function stand(x1,z1,x2,z2,color){const len=Math.hypot(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2,ang=Math.atan2(z2-z1,x2-x1);
+    const w=box(len,9,3,new THREE.MeshStandardMaterial({color,roughness:.8}));w.position.set(cx,4.5,cz);w.rotation.y=-ang;w.castShadow=true;world.add(w);
+    colliderLine(x1,z1,x2,z2);}
+  stand(-58,-66,-58,66,0x3a5a8a); stand(58,-66,58,66,0xb03a3a);
+  stand(-52,72,52,72,0x8a8a3a); stand(-52,-72,52,-72,0x3a8a5a);
+  const poleM=new THREE.MeshStandardMaterial({color:0x3a3f47});
+  for(const[fx,fz] of[[-58,-70],[58,-70],[-58,70],[58,70]]){
+    const pole=cyl(.3,.3,22,poleM,8);pole.position.set(fx,11,fz);pole.castShadow=true;world.add(pole);
+    const panel=box(4,3,.4,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffee,emissiveIntensity:.8}));panel.position.set(fx,21,fz);panel.rotation.y=Math.atan2(-fz,-fx);world.add(panel);
+    solids.push({position:new THREE.Vector3(fx,0,fz),radius:1.2});}
+  scatter(soccerBall,20,.4,.5,48,4);
+  for(const p of props)if(p.type==='soccerBall')p.wander={x:p.pos.x,z:0,rx:rand(3,6),rz:rand(35,50),speed:rand(.15,.3),seed:rand(0,10)};
+  scatter(soccerPlayer,12,.5,1,48,6);
+  for(const p of props)if(p.type==='soccerPlayer')p.wander={x:p.pos.x,z:p.pos.z,rx:rand(4,8),rz:rand(4,8),speed:rand(.5,.9),seed:rand(0,10)};
+  for(const gz of[-52,52]){addProp(soccerPlayer(0xf0e030),0,gz,.5,1,'soccerPlayer');
+    props[props.length-1].wander={x:0,z:gz,rx:3.2,rz:0,speed:.8,seed:rand(0,10)};}
+  addJumpRamp(0,-20,7,3,0); addBoost(0,20,0);
+  return new THREE.Vector3(0,0,0);
+}
+
+function buildTrampoline(){
+  scene.background=new THREE.Color(0x8fd0ff);scene.fog=new THREE.Fog(0x8fd0ff,140,380);hemi.intensity=1;
+  slab(150,.4,150,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x203050,roughness:.9}),{drive:true});
+  wallLine(-70,70,70,70,0); wallLine(-70,-70,70,-70,0); wallLine(-70,-70,-70,70,0); wallLine(70,-70,70,70,0);
+  for(let x=-60;x<=60;x+=20)for(let z=-60;z<=60;z+=20)addBounce(x,z,19,19);
+  scatter(beachBall,14,.4,.4,60,6); scatter(gymGoer,10,.5,1,60,8);
+  return new THREE.Vector3(0,0,0);
+}
+
+function buildMinefield(){
+  scene.background=new THREE.Color(0x8a7a5a);scene.fog=new THREE.Fog(0x8a7a5a,90,280);hemi.intensity=.7;
+  // churned no-man's-land: long trenches dug into the dirt, smooth enough to drive down into and back out of
+  const geo=new THREE.PlaneGeometry(300,300,140,140),pos=geo.attributes.position;
+  const TRENCH=[[-62,'x'],[18,'x'],[78,'x'],[-30,'z'],[52,'z']];
+  for(let i=0;i<pos.count;i++){const px=pos.getX(i),py=pos.getY(i);let h=0;
+    for(const[c,axis] of TRENCH){const d=Math.abs((axis==='x'?px:py)-c);
+      if(d<11){const t=d/11;h=Math.min(h,-6.5*Math.pow(Math.cos(t*Math.PI/2),2));}}
+    pos.setZ(i,h);}
+  geo.computeVertexNormals();
+  const ground=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x8a7550,roughness:1}));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);drivable.push(ground);
+  wallLine(-120,120,120,120,0); wallLine(-120,-120,120,-120,0); wallLine(-120,-120,-120,120,0); wallLine(120,-120,120,120,0);
+  // barbed wire strung along the open ground between trenches
+  addBarbedWire(-100,-84,100,-84); addBarbedWire(-100,84,100,84);
+  addBarbedWire(-46,-60,-46,60); addBarbedWire(36,-60,36,60);
+  scatter(mine,60,.5,1.5,100,8);
+  for(const p of props)if(p.type==='mine')p.onKnock=()=>{shake=Math.min(1.6,shake+1);gurney.userData.vy=Math.max(gurney.userData.vy,16);v.speed*=-1.4;};
+  scatter(barrel,10,.7,3,100,10); scatter(trafficCone,10,.5,1,100,10);
+  addJumpRamp(0,-72,7,3,0); addBoost(0,66,0);
+  return new THREE.Vector3(0,0,0);
+}
+
+function buildSkatepark(){
+  scene.background=new THREE.Color(0xffb86b);scene.fog=new THREE.Fog(0xffb86b,150,400);hemi.intensity=1;
+  // flat lot with a bowl dug into it; the half-pipe and mega ramp are structures built on top
+  const geo=new THREE.PlaneGeometry(400,320,120,96),pos=geo.attributes.position;
+  const R=28,depth=11;
+  for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i);
+    const dBowl=Math.hypot(x,y);let h=0;
+    if(dBowl<R){const t=dBowl/R;h=-depth*Math.pow(Math.cos(t*Math.PI/2),2);}
+    pos.setZ(i,h);}
+  geo.computeVertexNormals();
+  const ground=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x9a9aa0,roughness:.85}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);drivable.push(ground);
+  addHalfpipe(-95,0,60,15,10); // stands on the flat, drive in from either open end
+  // X-Games mega ramp: tall roll-in, kicker, gap to clear, then a downslope to land on
+  const top=addCurvedRamp(95,-44,16,58,Math.PI/3);  // curved roll-in: steep lip flattening out at the bottom
+  addSlope(95,-40,16,14,8,0,Math.PI);  // kicker that throws you across the gap
+  addSlope(95,2,16,30,9,0,0);          // landing slope on the far side of the gap
+  const deck=box(20,.6,16,new THREE.MeshStandardMaterial({color:0x7a6a58}));deck.position.set(95,top.y-.3,top.z-8);deck.castShadow=true;world.add(deck);drivable.push(deck); // start platform, top face flush with the ramp lip
+  for(const sx of[-9,9]){const leg=box(1.2,top.y,1.2,new THREE.MeshStandardMaterial({color:0x6a5a48}));leg.position.set(95+sx,top.y/2,top.z-7.5);leg.castShadow=true;world.add(leg);}
+  addJumpRamp(0,60,9,5,0);
+  for(const[x,z,len] of[[40,-30,14],[-40,30,14]]){const rail=box(.2,.9,len,new THREE.MeshStandardMaterial({color:0xaab0b8,metalness:.7}));addSolid(rail,x,z,.6);rail.position.y=.9;}
+  scatter(skater,10,.5,1,55,32); scatter(trafficCone,10,.5,1,55,32);
+  addBoost(0,-55,0);
+  return new THREE.Vector3(0,0,-45);
+}
+
+function buildCoaster(){
+  scene.background=new THREE.Color(0xffd97a);scene.fog=new THREE.Fog(0xffd97a,150,420);hemi.intensity=1;
+  slab(340,.4,340,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x7a5a3a,roughness:1}),{drive:true});
+  // the loop: a real track sitting on the ground at the origin — build speed down the straight and drive up into it
+  addLoopTrack(LOOP_CENTER.x,LOOP_CENTER.y,LOOP_CENTER.z,LOOP_R,7);
+  for(const sz of[-LOOP_R-3,LOOP_R+3]){const pillar=cyl(1.4,1.4,LOOP_R,new THREE.MeshStandardMaterial({color:0x8a8f95}),10);
+    pillar.position.set(0,LOOP_R/2,sz);pillar.castShadow=true;world.add(pillar);}
+  addBoost(0,-46,0); addBoost(0,46,0); // run-ups on both approaches
+  // ferris wheel landmark
+  const hub=new THREE.Group();
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(16,.6,10,28),new THREE.MeshStandardMaterial({color:0x2dd4ff,emissive:0x2dd4ff,emissiveIntensity:.3}));hub.add(rim);
+  for(let i=0;i<8;i++){const a=i/8*6.283,cab=box(2,2,2,new THREE.MeshStandardMaterial({color:[0xff2d6e,0xffd02d,0x39ff88,0x9b5cff][i%4]}));cab.position.set(Math.cos(a)*16,Math.sin(a)*16,0);hub.add(cab);}
+  hub.position.set(-90,18,0);world.add(hub);solids.push({position:new THREE.Vector3(-90,0,0),radius:5});
+  scatter(trafficCone,10,.5,1,140,30); scatter(strollerLady,8,1,2,130,30); scatter(canadian,10,.5,1,130,30);
+  return new THREE.Vector3(0,0,-62);
+}
+
+const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio,stadium:buildStadium,trampoline:buildTrampoline,minefield:buildMinefield,skatepark:buildSkatepark,coaster:buildCoaster};
+const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio',stadium:'Soccer Stadium',trampoline:'Trampoline Park',minefield:'Minefield',skatepark:'Skate Park',coaster:'Coaster Park'};
 let current='garage', spawn=new THREE.Vector3();
 // ---------- sandbox: mayhem score + per-level challenges ----------
 let counts={}, flags={}, curChallenges=[];
@@ -607,6 +844,11 @@ const CHALLENGES={
   xp:[['Catch big air',()=>flags.air],['Hit 140+ km/h',()=>Math.abs(v.speed)*4.2>=140],['Roam to the far hills',()=>Math.hypot(gurney.position.x,gurney.position.z)>150]],
   highway:[['Cause a 12-car pileup',()=>c('car',12)],['Hit 160+ km/h',()=>Math.abs(v.speed)*4.2>=160],['Reach the far end',()=>Math.abs(gurney.position.z)>190]],
   ohio:[['Flatten 40 cornstalks',()=>c('cornStalk',40)],['Flatten 5 possums',()=>c('possum',5)],['Escape Ohio',()=>Math.hypot(gurney.position.x,gurney.position.z)>170]],
+  stadium:[['Score a goal',()=>Math.abs(gurney.position.z)>52&&Math.abs(gurney.position.x)<4.2],['Scatter 15 soccer balls',()=>c('soccerBall',15)],['Trample 8 players',()=>c('soccerPlayer',8)]],
+  trampoline:[['Catch big air',()=>flags.air],['Pop 10 beach balls',()=>c('beachBall',10)],['Bump 6 bouncers',()=>c('gymGoer',6)]],
+  minefield:[['Detonate 8 mines',()=>c('mine',8)],['Bottom out in a trench',()=>gurney.position.y<-4.5],['Catch big air',()=>flags.air]],
+  skatepark:[['Drop into the bowl',()=>gurney.position.y<-8],['Ride the half-pipe wall',()=>Math.abs(gurney.position.x+95)<40&&gurney.position.y>5],['Clear the mega-ramp gap',()=>Math.abs(gurney.position.x-95)<20&&gurney.position.z>20&&flags.air]],
+  coaster:[['Loop the loop',()=>flags.loop],['Visit the ferris wheel',()=>Math.hypot(gurney.position.x+90,gurney.position.z)<20],['Smash 8 cones',()=>c('trafficCone',8)]],
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
   curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
@@ -627,9 +869,9 @@ function loadLevel(name){clearWorld();spawn=LEVELS[name]();current=name;respawn(
 // ---------- input ----------
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
-  if(e.code==='KeyR')toggleRider(); if(e.code==='KeyF')toggleSpin(); if(e.code==='KeyM')cycleMod();
+  if(e.code==='KeyR')toggleRider(); if(e.code==='KeyF')toggleSpin(); if(e.code==='KeyM')cycleMod(); if(e.code==='KeyK')toggleMute();
   if(e.code==='Escape'||e.code==='KeyP')togglePause();
-  const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway',KeyO:'ohio'}[e.code]; if(d)loadLevel(d);});
+  const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway',KeyO:'ohio',KeyT:'stadium',KeyB:'trampoline',KeyN:'minefield',KeyU:'skatepark',KeyC:'coaster'}[e.code]; if(d)loadLevel(d);});
 addEventListener('keyup',e=>keys[e.code]=false);
 let lookYaw=0, lookPitch=0;
 addEventListener('mousemove',e=>{lookYaw=(0.5-e.clientX/innerWidth)*1.4; lookPitch=(0.5-e.clientY/innerHeight)*0.7;});
@@ -639,14 +881,17 @@ function toggleSpin(){spinMode=!spinMode;if(spinMode)spinCamHeading=v.heading;do
 document.getElementById('riderBtn').onclick=toggleRider;
 document.getElementById('spinBtn').onclick=toggleSpin;
 document.getElementById('modBtn').onclick=cycleMod;
+document.getElementById('muteBtn').onclick=toggleMute;
 for(const b of document.querySelectorAll('[data-lvl]'))b.onclick=()=>loadLevel(b.dataset.lvl);
 
 // ---------- physics ----------
 const v={speed:0,heading:0};
 const ACCEL=14,MAX=22,REV=-8,FRICTION=6,BRAKE=24,TURN=2.2,G=30;
 const CAM_H=3.6,CAM_D=8.5; // chase cam stays under the garage ceiling (4.7)
+const LOOP_R=18, LOOP_CENTER=new THREE.Vector3(0,LOOP_R+0.2,0); // loop base sits on the ground so you drive straight onto it
+let onLoop=false, loopAngle=0, loopDir=1, groundPitch=0;
 let smashed=0, mayhem=0, comboCount=0, comboTimer=0, airTime=0;
-const speedEl=document.getElementById('speed'),smashEl=document.getElementById('smash'),scoreEl=document.getElementById('score'),comboEl=document.getElementById('combo');
+const speedEl=document.getElementById('speed'),smashEl=document.getElementById('smash'),scoreEl=document.getElementById('score'),comboEl=document.getElementById('combo'),needleEl=document.getElementById('needle');
 
 function stepProps(dt){
   const gx=gurney.position.x,gz=gurney.position.z,sp=Math.abs(v.speed);
@@ -666,6 +911,8 @@ function stepProps(dt){
       }}
     if(p.asleep){ // highway traffic cruises in its lane until hit
       if(p.drift){p.pos.z+=p.drift*dt; if(p.pos.z>190)p.pos.z=-190; else if(p.pos.z<-190)p.pos.z=190; p.g.position.copy(p.pos);}
+      else if(p.wander){const w=p.wander,t=performance.now()*0.001*w.speed+w.seed; // stadium: players/balls roam until hit
+        p.pos.x=w.x+Math.sin(t)*w.rx; p.pos.z=w.z+Math.cos(t)*w.rz; p.g.position.copy(p.pos);}
       continue;}
     p.vel.y-=G*dt; p.pos.addScaledVector(p.vel,dt);
     const gr=groundAt(p.pos.x,p.pos.z,p.pos.y);
@@ -679,39 +926,84 @@ function stepProps(dt){
 const clock=new THREE.Clock();
 function tick(){
   const dt=Math.min(clock.getDelta(),0.05);
-  if(!gameStarted||paused){ if(engineGain)engineGain.gain.value=0; renderer.render(scene,camera); requestAnimationFrame(tick); return; }
+  if(!gameStarted||paused){ renderer.render(scene,camera); requestAnimationFrame(tick); return; }
 
   if(modIdx===6){keys['KeyW']=true; if(!keys['KeyA']&&!keys['KeyD'])v.heading+=Math.sin(performance.now()*0.0006)*1.3*dt;
     modGroups[6].userData.spinner.rotation.y+=dt*5;} // FSD: auto-throttle and steers itself (badly)
   const boost=keys['ShiftLeft']||keys['ShiftRight'];
-  const acc=boost?ACCEL*2.2:ACCEL, maxS=boost?40:MAX;
-  if(keys['KeyW'])v.speed+=acc*dt; else if(keys['KeyS'])v.speed-=ACCEL*dt;
-  else{const f=FRICTION*dt;v.speed=v.speed>0?Math.max(0,v.speed-f):Math.min(0,v.speed+f);}
-  if(keys['Space']){const f=BRAKE*dt;v.speed=v.speed>0?Math.max(0,v.speed-f):Math.min(0,v.speed+f);}
-  v.speed=Math.max(REV,Math.min(maxS,v.speed));
+  const rocketBoost=modIdx===2&&boost;
+  const acc=(boost?ACCEL*2.2:ACCEL)+(rocketBoost?10:0), maxS=(boost?40:MAX)+(rocketBoost?14:0);
+  if(modIdx===2){const s=boost?(1.7+Math.sin(performance.now()*0.03)*0.35):1;for(const f of modGroups[2].userData.flames)f.scale.setScalar(s);}
+  if(rocketBoost)shake=Math.max(shake,0.12);
+  if(!onLoop){ // momentum carries you through the loop once committed — no stalling out upside-down
+    if(keys['KeyW'])v.speed+=acc*dt; else if(keys['KeyS'])v.speed-=ACCEL*dt;
+    else{const f=FRICTION*dt;v.speed=v.speed>0?Math.max(0,v.speed-f):Math.min(0,v.speed+f);}
+    if(keys['Space']){const f=BRAKE*dt;v.speed=v.speed>0?Math.max(0,v.speed-f):Math.min(0,v.speed+f);}
+    // speed picked up from a big drop is allowed to exceed the normal cap, then bleeds back down
+    if(v.speed>maxS)v.speed=Math.max(maxS,v.speed-16*dt);
+    else v.speed=Math.max(REV,Math.min(maxS,v.speed));
+  }
   if(Math.abs(v.speed)>0.1){const dir=v.speed>0?1:-1,g=Math.min(1,Math.abs(v.speed)/6);
     if(keys['KeyA'])v.heading+=TURN*dt*dir*g; if(keys['KeyD'])v.heading-=TURN*dt*dir*g;}
   if(spinMode)v.heading+=8*dt; // ponytail: constant yaw on top of normal control = donuts
 
-  const nx=gurney.position.x-Math.sin(v.heading)*v.speed*dt;
-  const nz=gurney.position.z-Math.cos(v.heading)*v.speed*dt;
-  let blocked=false;
-  for(const s of solids){if(Math.hypot(nx-s.position.x,nz-s.position.z)<s.radius+1.2){blocked=true;break;}}
-  if(blocked)v.speed*=-0.3; else{gurney.position.x=nx;gurney.position.z=nz;}
+  // drive onto the loop base with enough speed and you get carried all the way around and out the far side
+  if(current==='coaster'&&!onLoop&&Math.abs(v.speed)>15&&gurney.userData.vy<=0
+     &&Math.abs(gurney.position.x-LOOP_CENTER.x)<7&&Math.abs(gurney.position.z-LOOP_CENTER.z)<5&&gurney.position.y<3){
+    const vz=-Math.cos(v.heading)*v.speed; // which way along the loop's axis are we travelling?
+    loopDir=vz>=0?1:-1; onLoop=true; loopAngle=0;
+  }
+  let gr=null;
+  if(onLoop){
+    loopAngle+=Math.abs(v.speed)/LOOP_R*dt;
+    flags.loop=true;
+    if(loopAngle>=Math.PI*2){ // pop out past the base, still rolling the way we came in
+      onLoop=false;loopAngle=0;gurney.rotation.x=0;gurney.userData.vy=0;airTime=0;
+      gurney.position.set(LOOP_CENTER.x,0.2,LOOP_CENTER.z+9*loopDir);
+    } else {
+      gurney.position.set(LOOP_CENTER.x,LOOP_CENTER.y-Math.cos(loopAngle)*LOOP_R,LOOP_CENTER.z+Math.sin(loopAngle)*LOOP_R*loopDir);
+      gurney.rotation.x=loopAngle*loopDir;
+    }
+  }
+  if(!onLoop){
+    const nx=gurney.position.x-Math.sin(v.heading)*v.speed*dt;
+    const nz=gurney.position.z-Math.cos(v.heading)*v.speed*dt;
+    let blocked=false;
+    for(const s of solids){if(Math.hypot(nx-s.position.x,nz-s.position.z)<s.radius+1.2){blocked=true;break;}}
+    if(blocked)v.speed*=-0.3; else{gurney.position.x=nx;gurney.position.z=nz;}
 
-  // vertical: ground-follow, ramps, and free-fall off edges (Niagara!)
-  const gr=groundAt(gurney.position.x,gurney.position.z,gurney.position.y);
-  if(gr===null){gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;}
-  else if(gurney.position.y>gr+0.15){gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;
-    if(gurney.position.y<=gr){gurney.position.y=gr;gurney.userData.vy=0;}}
-  else{const oldY=gurney.position.y;gurney.position.y+=(gr-oldY)*Math.min(1,12*dt);
-    gurney.userData.vy=Math.min(14,(gurney.position.y-oldY)/Math.max(dt,1e-3));airTime=0;} // carry climb speed so ramps launch you
+    // vertical: ground-follow, ramps, and free-fall off edges (Niagara!)
+    gr=groundAt(gurney.position.x,gurney.position.z,gurney.position.y);
+    // stick to steep descents instead of launching off them — but only when not already flying upward off a kicker
+    const stick=0.15+(gurney.userData.vy<=0?Math.min(3.2,Math.abs(v.speed)*0.16):0);
+    if(gr===null){gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;}
+    else if(gurney.position.y>gr+stick){gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;
+      if(gurney.position.y<=gr){gurney.position.y=gr;gurney.userData.vy=0;}}
+    else{const oldY=gurney.position.y;gurney.position.y=gr; // sit exactly on the surface — lerping toward it makes the gurney sink into ramps
+      gurney.userData.vy=Math.min(14,(gr-oldY)/Math.max(dt,1e-3));airTime=0;} // carry climb speed so ramps launch you
+    // gravity along the slope: rip down drop-ins, bleed off climbing, and roll back down if you stall on a wall
+    if(gr!==null&&airTime===0){
+      const fx=-Math.sin(v.heading),fz=-Math.cos(v.heading);
+      const ahead=groundAt(gurney.position.x+fx,gurney.position.z+fz,gurney.position.y+4);
+      if(ahead!==null){const slope=Math.max(-3,Math.min(3,ahead-gr));
+        const sinT=slope/Math.sqrt(1+slope*slope); // true gravity component along the slope — tan() here would out-muscle the engine and stall every climb
+        v.speed=Math.max(-58,Math.min(58,v.speed-sinT*G*0.62*dt));
+        groundPitch=-Math.atan(slope);} // nose up when the ground rises ahead
+    }
+  }
   if(airTime>0.7)flags.air=true;
   if(gurney.position.y<-40)flags.falls=true;
   if(current==='vegas'&&Math.hypot(gurney.position.x,gurney.position.z+70)<22&&gurney.position.y>6)flags.sphere=true;
   if(gurney.position.y<-65)respawn();
   for(const bp of boosts){if(Math.hypot(gurney.position.x-bp.position.x,gurney.position.z-bp.position.z)<bp.radius)v.speed=Math.max(v.speed,36);}
+  for(const bp of bounces){if(gr!==null&&gurney.position.y<=gr+0.2&&gurney.position.x>bp.x1&&gurney.position.x<bp.x2&&gurney.position.z>bp.z1&&gurney.position.z<bp.z2){
+    gurney.userData.vy=24;gurney.position.y=gr+0.25;}}
   gurney.rotation.y=v.heading;
+  // tilt to match the slope so the gurney rolls along ramps instead of staying flat and sinking through them
+  if(!onLoop){
+    if(airTime>0)groundPitch*=Math.max(0,1-2*dt); // level out while airborne
+    gurney.rotation.x+=(groundPitch-gurney.rotation.x)*Math.min(1,12*dt);
+  }
 
   stepProps(dt);
 
@@ -721,7 +1013,7 @@ function tick(){
     if(barnRef.userData.fireLight)barnRef.userData.fireLight.intensity=3.5+Math.sin(t*5)*1.5;}
   if(fishGroup)fishGroup.rotation.y+=dt*0.12;
 
-  riderRoot.position.copy(gurney.position); riderRoot.rotation.y=v.heading;
+  riderRoot.position.copy(gurney.position); riderRoot.rotation.y=v.heading; riderRoot.rotation.x=gurney.rotation.x; // rider tilts with the bed
 
   const gx=gurney.position.x,gpy=gurney.position.y,gz=gurney.position.z;
   const camH=(spinMode?spinCamHeading:v.heading)+lookYaw;
@@ -733,11 +1025,12 @@ function tick(){
 
   updateParticles(dt);
   if(runActive){runTime-=dt;if(runTime<=0){runTime=0;endRun();}else timerEl.textContent='⏱ '+Math.ceil(runTime)+'s';}
-  if(AC&&engineOsc){const s=Math.abs(v.speed)/MAX;engineOsc.frequency.setTargetAtTime(55+s*210,AC.currentTime,.06);engineGain.gain.setTargetAtTime(.025+s*.09,AC.currentTime,.06);}
 
   if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0)comboCount=0;}
   checkChallenges();
-  speedEl.textContent=Math.round(Math.abs(v.speed)*4.2);
+  const kmh=Math.round(Math.abs(v.speed)*4.2);
+  speedEl.textContent=kmh;
+  needleEl.setAttribute('transform','rotate('+(-90+Math.min(1,kmh/200)*180)+' 60 60)');
   scoreEl.textContent=mayhem;
   comboEl.textContent=comboCount>1?('x'+(1+Math.min(comboCount-1,20)*0.2).toFixed(1)):'';
   if(toastT>0){toastT-=dt;if(toastT<=0)document.getElementById('toast').style.opacity=0;}
@@ -745,18 +1038,19 @@ function tick(){
   requestAnimationFrame(tick);
 }
 // ---------- audio (synthesized, no assets) ----------
-let AC=null,engineOsc=null,engineGain=null;
+let AC=null,masterGain=null,muted=false;
 function initAudio(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
-  engineOsc=AC.createOscillator();engineGain=AC.createGain();const f=AC.createBiquadFilter();
-  engineOsc.type='sawtooth';engineOsc.frequency.value=60;f.type='lowpass';f.frequency.value=650;
-  engineGain.gain.value=0;engineOsc.connect(f);f.connect(engineGain);engineGain.connect(AC.destination);engineOsc.start();}
+  masterGain=AC.createGain();masterGain.gain.value=muted?0:1;masterGain.connect(AC.destination);}
 function sfxSmash(mass){if(!AC)return;const t=AC.currentTime,len=2400,b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2);
   const s=AC.createBufferSource();s.buffer=b;const g=AC.createGain();g.gain.setValueAtTime(Math.min(.5,.12+mass*.05),t);g.gain.exponentialRampToValueAtTime(.001,t+.22);
-  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=180+mass*70;s.connect(f);f.connect(g);g.connect(AC.destination);s.start();}
+  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=180+mass*70;s.connect(f);f.connect(g);g.connect(masterGain);s.start();}
 function sfxChime(){if(!AC)return;const t=AC.currentTime;[660,880,1320].forEach((fr,i)=>{const o=AC.createOscillator(),g=AC.createGain();
   o.type='triangle';o.frequency.value=fr;g.gain.setValueAtTime(.0001,t+i*.09);g.gain.exponentialRampToValueAtTime(.18,t+i*.09+.02);g.gain.exponentialRampToValueAtTime(.001,t+i*.09+.45);
-  o.connect(g);g.connect(AC.destination);o.start(t+i*.09);o.stop(t+i*.09+.5);});}
+  o.connect(g);g.connect(masterGain);o.start(t+i*.09);o.stop(t+i*.09+.5);});}
+function toggleMute(){muted=!muted;if(masterGain)masterGain.gain.value=muted?0:1;
+  if(AC){if(muted)AC.suspend();else AC.resume();}
+  document.getElementById('muteBtn').textContent=muted?'🔇 Muted (K)':'🔊 Sound (K)';}
 
 // ---------- juice: screen shake + debris ----------
 let shake=0, particles=[]; const _pgeo=new THREE.BoxGeometry(.32,.32,.32);
@@ -777,7 +1071,23 @@ function endRun(){runActive=false;timerEl.textContent='';const best=+(localStora
 // ---------- pause + title ----------
 let paused=false, gameStarted=false;
 function togglePause(){if(!gameStarted)return;paused=!paused;document.getElementById('pause').classList.toggle('hidden',!paused);}
-document.getElementById('playBtn').onclick=()=>{gameStarted=true;initAudio();if(AC)AC.resume();document.getElementById('title').classList.add('hidden');};
+function startGame(){gameStarted=true;paused=false;initAudio();if(AC)AC.resume();
+  document.getElementById('title').classList.add('hidden');document.getElementById('pause').classList.add('hidden');}
+function openMenu(){gameStarted=false;paused=false;
+  document.getElementById('pause').classList.add('hidden');document.getElementById('end').classList.add('hidden');
+  document.getElementById('title').classList.remove('hidden');}
+document.getElementById('playBtn').onclick=startGame;
+document.getElementById('menuBtn').onclick=openMenu;
+// build the level picker on the menu from the level list itself, so new levels show up automatically
+const menuGrid=document.getElementById('menuLevels');
+for(const key of Object.keys(LEVELS)){
+  const b=document.createElement('button');b.textContent=LOC[key];
+  b.onclick=()=>{loadLevel(key);startGame();};
+  menuGrid.appendChild(b);
+}
+function randomLevel(){const ks=Object.keys(LEVELS);loadLevel(ks[(Math.random()*ks.length)|0]);}
+document.getElementById('randomBtn').onclick=()=>{randomLevel();startGame();};
+document.getElementById('diceBtn').onclick=randomLevel;
 document.getElementById('resumeBtn').onclick=togglePause;
 document.getElementById('runBtn').onclick=startRun;
 document.getElementById('againBtn').onclick=()=>{document.getElementById('end').classList.add('hidden');startRun();};
