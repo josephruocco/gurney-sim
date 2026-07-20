@@ -31,6 +31,14 @@
   .overlay .ctrl{font-size:12px;opacity:.55;max-width:560px}
   .overlay button{margin-top:18px;font-size:20px;font-weight:700;padding:13px 30px;border:0;border-radius:10px;
                   background:#2e6cf0;color:#fff;cursor:pointer}
+  #vitals{position:fixed;left:12px;bottom:210px;z-index:10;width:238px;background:rgba(4,10,8,.82);
+          border:1px solid #1d3a2a;border-radius:9px;padding:8px 10px 6px;font-family:ui-monospace,Menlo,monospace}
+  #vitals .vt{font-size:10px;letter-spacing:1.5px;color:#4a7a66;margin-bottom:3px}
+  #vitals .vrow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;line-height:1.5}
+  #vitals .vlab{color:#5a8a76;font-size:11px}
+  #vitals .vval{font-weight:700}
+  #ecg{display:block;width:216px;height:40px;margin:3px 0 4px}
+  #vStatus{text-align:center;font-size:13px;font-weight:700;letter-spacing:1.5px;padding:3px 0;border-radius:5px}
   #menuLevels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;max-width:700px;margin:16px 0 4px}
   #menuLevels button{margin:0;font-size:13px;font-weight:600;padding:10px 6px;border-radius:8px;background:#2b3340;color:#dfe6ee}
   #menuLevels button:hover{background:#3d4a5c}
@@ -46,6 +54,14 @@
 <div id="hud">Location: <b id="loc">Parking Garage</b><br>Rider: <b id="rider">Supine patient</b><br>Speed: <b id="speed">0</b> km/h
 <svg id="speedoSvg" viewBox="0 0 120 66" style="width:90px;display:block;margin:2px 0 4px"><path d="M10,60 A50,50 0 0 1 110,60" fill="none" stroke="#2b3340" stroke-width="7" stroke-linecap="round"/><line id="needle" x1="60" y1="60" x2="60" y2="16" stroke="#ffd34d" stroke-width="3" stroke-linecap="round" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="3.5" fill="#ffd34d"/></svg>
 Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" style="color:#ff9f43;font-weight:700"></span></div>
+<div id="vitals">
+  <div class="vt">PATIENT MONITOR</div>
+  <div class="vrow"><span class="vlab">HR</span><span><span class="vval" id="vHR" style="color:#5cd6a8">72</span> <span class="vlab">bpm</span></span></div>
+  <div class="vrow"><span class="vlab">BP</span><span><span class="vval" id="vBP" style="color:#5cd6a8">120/80</span></span></div>
+  <div class="vrow"><span class="vlab">SpO₂</span><span><span class="vval" id="vO2" style="color:#5cd6a8">99</span> <span class="vlab">%</span></span></div>
+  <canvas id="ecg" width="432" height="80"></canvas>
+  <div id="vStatus">STABLE</div>
+</div>
 <div id="chal"></div>
 <div id="toast"></div>
 <div id="timer"></div>
@@ -61,7 +77,7 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
     <button id="randomBtn">🎲 Random Level</button>
     <button id="playBtn">▶ PLAY</button>
   </div>
-  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · R swap rider · F spin · M cycle mods · K mute · Esc pause</p>
+  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · in the air W/S tilt the gurney — land level to stay alive · R rider · F spin · M mods · K mute · Esc pause</p>
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
@@ -97,7 +113,7 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
     <button id="menuBtn">☰ Menu</button>
   </div>
 </div>
-<div id="help">W/S accel · A/D steer · Space brake · Shift boost · 1-0 location · R rider · F spin · M mods · K mute · yellow ramps = air · green pads = speed · clear the checklist for bonus mayhem</div>
+<div id="help">W/S accel · A/D steer · Space brake · Shift boost · IN AIR: W/S tilt to land flat · 1-0 location · R rider · F spin · M mods · K mute · yellow ramps = air · green pads = speed</div>
 
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -996,7 +1012,7 @@ function buildMinefield(){
   addBarbedWire(-100,-84,100,-84); addBarbedWire(-100,84,100,84);
   addBarbedWire(-46,-60,-46,60); addBarbedWire(36,-60,36,60);
   scatter(mine,60,.5,1.5,100,8);
-  for(const p of props)if(p.type==='mine')p.onKnock=()=>{shake=Math.min(1.6,shake+1);gurney.userData.vy=Math.max(gurney.userData.vy,16);v.speed*=-1.4;};
+  for(const p of props)if(p.type==='mine')p.onKnock=()=>{shake=Math.min(1.6,shake+1);gurney.userData.vy=Math.max(gurney.userData.vy,16);v.speed*=-1.4;hurt(14,'Stepped on a mine');};
   scatter(barrel,10,.7,3,100,10); scatter(trafficCone,10,.5,1,100,10);
   addJumpRamp(0,-72,7,3,0); addBoost(0,66,0);
   return new THREE.Vector3(0,0,0);
@@ -1181,7 +1197,28 @@ const CHALLENGES={
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
   curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
-function setChallenges(level){counts={};flags={};curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
+function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
+function judgeLanding(impact,gr){
+  if(!wasAir||flatlined)return; wasAir=false; pitchVel=0;
+  // how close was the gurney's pitch to the slope it actually hit?
+  const fx=-Math.sin(v.heading),fz=-Math.cos(v.heading),D=1.8;
+  const ahead=groundAt(gurney.position.x+fx*D,gurney.position.z+fz*D,gurney.position.y+4);
+  const slopeAng=ahead===null?0:Math.atan((ahead-gr)/D);
+  const err=Math.abs(gurney.rotation.x-slopeAng);
+  if(err<0.26&&impact<20){                       // matched the ground, wheels first
+    const bonus=Math.round(120+impact*14);
+    mayhem+=bonus; condition=Math.min(100,condition+2);
+    comboCount++; comboTimer=3; sfxChime();
+    flashToast('\u2728 PERFECT LANDING +'+bonus);
+  }else if(err<0.7){
+    hurt(3+impact*0.35,'Rough landing');
+    flashToast('\u27b0 ROUGH LANDING');
+  }else{
+    const dmg=12+impact*0.8+err*9;
+    hurt(dmg,'Landed on the patient\u2019s head');
+    shake=Math.min(1.8,shake+0.8); sfxSmash(7);
+    flashToast('\ud83d\udca5 CRASH LANDING');
+  }}
 function checkChallenges(){let changed=false;for(const ch of curChallenges){if(!ch.done&&ch.test()){ch.done=true;mayhem+=300;flashToast('✅ '+ch.label+'  +300');sfxChime();changed=true;}}if(changed)renderChallenges();}
 const FLOPS=['\u26bd OOOF! (never touched him)','\u26bd He\u2019s down! Replay says otherwise','\u26bd Clutching the wrong leg','\u26bd Rolling... still rolling...'];
 const BADCALLS=['\ud83d\udfe8 YELLOW \u2014 for existing','\ud83d\udfe5 RED CARD \u2014 wrong player','\u26a0\ufe0f OFFSIDE (nobody moved)','\ud83d\udcef PENALTY \u2014 unclear why','\u26bd GOAL DISALLOWED \u2014 vibes'];
@@ -1227,6 +1264,19 @@ const PARK_BAY={x:7.5,z:22};
 const LOOP_R=12, LOOP_X=0, LOOP_Y=LOOP_R+0.2, LOOP_Z0=-26, LOOP_Z1=26;
 let onLoop=false, loopAngle=0, loopDir=1, groundPitch=0;
 let smashed=0, mayhem=0, comboCount=0, comboTimer=0, airTime=0;
+// condition: the run's real resource. Stunts spend it; landing well spends less.
+let condition=100, pitchVel=0, wasAir=false, adrenaline=0, ecgPhase=0, flatlined=false;
+const ecgBuf=new Array(108).fill(0);
+function hurt(n,why){ if(flatlined)return;
+  condition=Math.max(0,condition-n); adrenaline=Math.min(1,adrenaline+n/45);
+  if(condition<=0)flatline(why); }
+function flatline(why){ flatlined=true; runActive=false; timerEl.textContent='';
+  const best=+(localStorage.getItem('gurney_best')||0),isNew=mayhem>best;
+  if(isNew)localStorage.setItem('gurney_best',mayhem);
+  document.querySelector('#end h2').textContent='FLATLINE';
+  document.getElementById('endScore').textContent=(why||'Body gave out')+' \u2014 Mayhem: '+mayhem;
+  document.getElementById('endBest').textContent=isNew?'\u2605 NEW BEST!':'Best: '+best;
+  document.getElementById('end').classList.remove('hidden'); }
 const speedEl=document.getElementById('speed'),smashEl=document.getElementById('smash'),scoreEl=document.getElementById('score'),comboEl=document.getElementById('combo'),needleEl=document.getElementById('needle');
 
 function stepProps(dt){
@@ -1268,6 +1318,48 @@ function stepProps(dt){
   }
 }
 
+const ecgCanvas=document.getElementById('ecg'),ecgCtx=ecgCanvas.getContext('2d');
+const vHR=document.getElementById('vHR'),vBP=document.getElementById('vBP'),vO2=document.getElementById('vO2'),vStatus=document.getElementById('vStatus');
+// one PQRST beat, sampled over phase 0..1
+function ecgWave(t){
+  if(t<0.09)return Math.sin(t/0.09*Math.PI)*0.16;      // P
+  if(t<0.15)return 0;
+  if(t<0.18)return -(t-0.15)/0.03*0.22;                // Q
+  if(t<0.22)return -0.22+(t-0.18)/0.04*1.22;           // R
+  if(t<0.26)return 1.0-(t-0.22)/0.04*1.35;             // S
+  if(t<0.32)return -0.35+(t-0.26)/0.06*0.35;
+  if(t<0.50)return Math.sin((t-0.32)/0.18*Math.PI)*0.26; // T
+  return 0;}
+const COND=[[75,'STABLE','#5cd6a8'],[45,'GUARDED','#ffd34d'],[20,'SERIOUS','#ff9f43'],[1,'CRITICAL','#ff5a5a'],[-1,'ASYSTOLE','#ff2d2d']];
+function drawVitals(dt){
+  const c=Math.max(0,condition);
+  let hr,sys,dia,o2;
+  if(flatlined){hr=0;sys=0;dia=0;o2=0;}
+  else{
+    hr=Math.round(72+Math.abs(v.speed)*1.1+adrenaline*46+(100-c)*0.42);
+    if(c<20)hr+=Math.round(Math.sin(performance.now()*0.02)*12); // erratic when critical
+    sys=Math.round(60+c*0.6); dia=Math.round(40+c*0.4); o2=Math.round(69+c*0.3);
+  }
+  adrenaline=Math.max(0,adrenaline-dt*0.55);
+  let label='STABLE',col='#5cd6a8';
+  for(const[thr,lab,cc] of COND){ if(flatlined){label='ASYSTOLE';col='#ff2d2d';break;} if(c>=thr){label=lab;col=cc;break;} }
+  vHR.textContent=hr; vBP.textContent=sys+'/'+dia; vO2.textContent=o2;
+  for(const el of[vHR,vBP,vO2])el.style.color=col;
+  vStatus.textContent=label; vStatus.style.color=col;
+  vStatus.style.background=col+'22';
+  vStatus.style.opacity=(label==='CRITICAL'&&Math.sin(performance.now()*0.012)<0)?0.35:1;
+  // scroll the trace
+  ecgPhase+=(flatlined?0:hr/60)*dt;
+  ecgBuf.shift(); ecgBuf.push(flatlined?0:ecgWave(ecgPhase%1));
+  const W=ecgCanvas.width,H=ecgCanvas.height;
+  ecgCtx.clearRect(0,0,W,H);
+  ecgCtx.strokeStyle=col; ecgCtx.lineWidth=3; ecgCtx.beginPath();
+  for(let i=0;i<ecgBuf.length;i++){
+    const x=i/(ecgBuf.length-1)*W, y=H*0.6-ecgBuf[i]*H*0.46;
+    i?ecgCtx.lineTo(x,y):ecgCtx.moveTo(x,y);
+  }
+  ecgCtx.stroke();
+}
 const clock=new THREE.Clock();
 function tick(){
   const dt=Math.min(clock.getDelta(),0.05);
@@ -1281,7 +1373,12 @@ function tick(){
   if(modIdx===2){const s=boost?(1.7+Math.sin(performance.now()*0.03)*0.35):1;for(const f of modGroups[2].userData.flames)f.scale.setScalar(s);}
   if(rocketBoost)shake=Math.max(shake,0.12);
   if(!onLoop){ // momentum carries you through the loop once committed — no stalling out upside-down
-    if(keys['KeyW'])v.speed+=acc*dt; else if(keys['KeyS'])v.speed-=ACCEL*dt;
+    if(airTime>0){ // airborne: W/S rotate the gurney instead of driving it — this is what makes a landing a skill
+      if(keys['KeyW'])pitchVel-=3.4*dt;
+      if(keys['KeyS'])pitchVel+=3.4*dt;
+      pitchVel=Math.max(-3.2,Math.min(3.2,pitchVel*(1-0.6*dt)));
+    }
+    else if(keys['KeyW'])v.speed+=acc*dt; else if(keys['KeyS'])v.speed-=ACCEL*dt;
     else{const f=FRICTION*dt;v.speed=v.speed>0?Math.max(0,v.speed-f):Math.min(0,v.speed+f);}
     if(keys['Space']){const f=BRAKE*dt;v.speed=v.speed>0?Math.max(0,v.speed-f):Math.min(0,v.speed+f);}
     // speed picked up from a big drop is allowed to exceed the normal cap, then bleeds back down
@@ -1323,7 +1420,7 @@ function tick(){
     const nz=gurney.position.z-Math.cos(v.heading)*v.speed*dt;
     let blocked=false;
     for(const s of solids){if(Math.hypot(nx-s.position.x,nz-s.position.z)<s.radius+1.2){blocked=true;break;}}
-    if(blocked)v.speed*=-0.3; else{gurney.position.x=nx;gurney.position.z=nz;}
+    if(blocked){if(Math.abs(v.speed)>18)hurt(Math.abs(v.speed)*0.25,'Hit a wall');v.speed*=-0.3;} else{gurney.position.x=nx;gurney.position.z=nz;}
 
     // vertical: ground-follow, ramps, and free-fall off edges (Niagara!)
     gr=groundAt(gurney.position.x,gurney.position.z,gurney.position.y);
@@ -1334,9 +1431,15 @@ function tick(){
       const ballistic=gurney.position.y+gurney.userData.vy*dt-0.5*G*dt*dt;
       if(ballistic>gr+0.02){
         gurney.userData.vy-=G*dt;gurney.position.y+=gurney.userData.vy*dt;airTime+=dt;
-        if(gurney.position.y<=gr){gurney.position.y=gr;gurney.userData.vy=0;airTime=0;}
+        if(gurney.position.y<=gr){
+          const impact=Math.abs(gurney.userData.vy);
+          gurney.position.y=gr;gurney.userData.vy=0;airTime=0;
+          judgeLanding(impact,gr);
+        }
       }else{
-        const oldY=gurney.position.y;gurney.position.y=gr; // sit exactly on the surface
+        const oldY=gurney.position.y,incoming=Math.abs(gurney.userData.vy);
+        gurney.position.y=gr; // sit exactly on the surface
+        if(wasAir&&airTime>0)judgeLanding(incoming,gr); // a fast descent lands through this branch, not the one above
         // carry the surface's own rise/fall rate, so cresting a ramp launches you into a real arc
         gurney.userData.vy=Math.max(-45,Math.min(16,(gr-oldY)/Math.max(dt,1e-3)));airTime=0;
       }
@@ -1365,8 +1468,8 @@ function tick(){
   gurney.rotation.y=v.heading;
   // tilt to match the slope so the gurney rolls along ramps instead of staying flat and sinking through them
   if(!onLoop){
-    if(airTime>0)groundPitch=Math.atan2(gurney.userData.vy,Math.max(6,Math.abs(v.speed))); // in the air the nose follows the arc
-    gurney.rotation.x+=(groundPitch-gurney.rotation.x)*Math.min(1,12*dt);
+    if(airTime>0){gurney.rotation.x+=pitchVel*dt;wasAir=true;} // keep whatever spin the ramp gave you; W/S adjust it
+    else gurney.rotation.x+=(groundPitch-gurney.rotation.x)*Math.min(1,12*dt);
   }
 
   stepProps(dt);
@@ -1499,7 +1602,7 @@ function tick(){
       ud.heading+=Math.PI; // sent reeling the other way
     }else if(sharkDist<4.4&&ud.cool<=0&&ud.stun<=0){ud.cool=2.5;sharkBites++;
       shake=Math.min(1.8,shake+1.1);sfxSmash(6);
-      gurney.userData.vy=Math.max(gurney.userData.vy,13);v.speed*=0.5; // scrub speed, never reverse — reversing pins you on the shark
+      gurney.userData.vy=Math.max(gurney.userData.vy,13);v.speed*=0.5;hurt(11,'Eaten'); // scrub speed, never reverse — reversing pins you on the shark
       flashToast('🦈 CHOMP!');}
   }
 
@@ -1529,6 +1632,7 @@ function tick(){
   needleEl.setAttribute('transform','rotate('+(-90+Math.min(1,kmh/200)*180)+' 60 60)');
   scoreEl.textContent=mayhem;
   comboEl.textContent=comboCount>1?('x'+(1+Math.min(comboCount-1,20)*0.2).toFixed(1)):'';
+  drawVitals(dt);
   if(toastT>0){toastT-=dt;if(toastT<=0)document.getElementById('toast').style.opacity=0;}
   renderer.render(scene,camera);
   requestAnimationFrame(tick);
@@ -1557,6 +1661,7 @@ function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=part
 // ---------- timed run + high score ----------
 let runActive=false, runTime=0; const timerEl=document.getElementById('timer');
 function startRun(){runActive=true;runTime=90;mayhem=0;comboCount=0;comboTimer=0;smashed=0;smashEl.textContent=0;scoreEl.textContent=0;
+  condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;document.querySelector('#end h2').textContent='Time!';
   document.getElementById('end').classList.add('hidden');document.getElementById('runBtn').classList.add('on');}
 function endRun(){runActive=false;timerEl.textContent='';const best=+(localStorage.getItem('gurney_best')||0),isNew=mayhem>best;
   if(isNew)localStorage.setItem('gurney_best',mayhem);
