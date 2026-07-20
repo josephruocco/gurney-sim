@@ -229,23 +229,24 @@ applyRider();
 // ---------- world ----------
 let world=new THREE.Group(); scene.add(world);
 let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
-let barnRef=null, fishGroup=null, ferrisRef=null, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
+let barnRef=null, fishGroup=null, ferrisRef=null, signRef=null, coasterRef=null, signCool=0, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
 let worldDirty=true;
 function addDrivable(m){drivable.push(m);worldDirty=true;}
-function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;sharkRef=null;sharkDist=999;}
+function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;sharkRef=null;sharkDist=999;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)addDrivable(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
 // props/solids sit on the terrain rather than at y=0, so they don't float over trenches or bowls
 function addSolid(g,x,z,r){g.position.set(x,groundAt(x,z,80)??0,z);g.traverse(o=>o.castShadow=true);world.add(g);solids.push({position:g.position,radius:r});}
+function propCorners(g){g.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(g),mn=bb.min.clone().sub(g.position),mx=bb.max.clone().sub(g.position),c=[];
+  for(const X of[mn.x,mx.x])for(const Y of[mn.y,mx.y])for(const Z of[mn.z,mx.z])c.push(new THREE.Vector3(X,Y,Z));
+  return c;}
 function addProp(g,x,z,r,mass,type='thing'){g.position.set(x,groundAt(x,z,80)??0,z);g.traverse(o=>o.castShadow=true);world.add(g);
   // cache the local bounding-box corners so a tumbled prop can rest on its lowest point instead of
   // burying its origin in the floor (models are built with the origin at their base)
-  g.updateMatrixWorld(true);
-  const bb=new THREE.Box3().setFromObject(g),mn=bb.min.clone().sub(g.position),mx=bb.max.clone().sub(g.position),corners=[];
-  for(const X of[mn.x,mx.x])for(const Y of[mn.y,mx.y])for(const Z of[mn.z,mx.z])corners.push(new THREE.Vector3(X,Y,Z));
-  props.push({g,pos:g.position,radius:r,mass,type,corners,vel:new THREE.Vector3(),spin:new THREE.Vector3(),asleep:true});}
+  props.push({g,pos:g.position,radius:r,mass,type,corners:propCorners(g),vel:new THREE.Vector3(),spin:new THREE.Vector3(),asleep:true});}
 const _pm4=new THREE.Matrix4(), _pv3=new THREE.Vector3();
 function propLowestY(p){ // how far the prop's geometry hangs below its origin at its current rotation
   if(!p.corners)return 0;
@@ -485,6 +486,54 @@ function soccerBall(){const g=new THREE.Group();const white=new THREE.MeshStanda
   for(let k=0;k<6;k++){const patch=new THREE.Mesh(new THREE.CircleGeometry(.12,5),blk);const a=rand(0,6.28),el=rand(-1,1);
     patch.position.set(.35*Math.cos(a)*Math.sqrt(1-el*el),.35+.35*el,.35*Math.sin(a)*Math.sqrt(1-el*el));patch.lookAt(patch.position.clone().multiplyScalar(2).setY(patch.position.y-.35));g.add(patch);}
   return g;}
+function signTexture(){
+  const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');
+  x.fillStyle='#f2e2bd';x.fillRect(0,0,512,256);
+  x.fillStyle='#c8202a';x.fillRect(0,0,512,54);
+  x.fillStyle='#fff';x.font='bold 32px system-ui,sans-serif';x.textAlign='center';x.fillText('SAFETY NOTICE',256,38);
+  x.fillStyle='#1a1a1a';x.font='bold 48px system-ui,sans-serif';
+  x.fillText('YOU MUST BE',256,124);x.fillText('THIS TALL',256,176);
+  x.fillStyle='#7a3a10';x.font='bold 28px system-ui,sans-serif';x.fillText('\u2014 TO RIDE \u2014',256,222);
+  return new THREE.CanvasTexture(c);}
+function heightSign(){const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0x6b4a2b,roughness:.9});
+  for(const sx of[-2.3,2.3]){const p2=cyl(.16,.16,4.6,wood,8);p2.position.set(sx,2.3,0);g.add(p2);}
+  const bar=box(4.8,.24,.24,new THREE.MeshStandardMaterial({color:0xffd02d,emissive:0xffd02d,emissiveIntensity:.25}));
+  bar.position.set(0,2.6,0);g.add(bar);                       // supine clears it; standing does not
+  const board=new THREE.Mesh(new THREE.BoxGeometry(3.6,1.9,.12),new THREE.MeshStandardMaterial({map:signTexture()}));
+  board.position.set(0,4,0);g.add(board);
+  return g;}
+function coasterCar(){const g=new THREE.Group();
+  const shell=box(3,1.3,5.4,new THREE.MeshStandardMaterial({color:0xffd02d,metalness:.3,roughness:.5}));shell.position.y=1;g.add(shell);
+  const nose=cone(1.35,1.8,new THREE.MeshStandardMaterial({color:0xd83a3a}),4);nose.rotation.x=-Math.PI/2;nose.position.set(0,1,-3.4);g.add(nose);
+  const cols=[0x2a5fd8,0xd8342a,0x39a85a,0x9b5cff];
+  for(let r=0;r<2;r++)for(const sx of[-.72,.72]){
+    const zz=-1.1+r*2.2;
+    const t=cap(.26,.5,new THREE.MeshStandardMaterial({color:cols[(Math.random()*4)|0]}));t.position.set(sx,2.05,zz);g.add(t);
+    const hd=ball(.24,SKIN);hd.position.set(sx,2.6,zz);g.add(hd);
+    const hr=ball(.26,HAIR);hr.position.set(sx,2.68,zz);hr.scale.set(1,.6,1);g.add(hr);
+    for(const s2 of[-1,1]){const a=cap(.08,.45,SKIN);a.position.set(sx+s2*.3,2.5,zz);a.rotation.z=s2*.55;a.rotation.x=-1;g.add(a);} // arms up
+  }
+  for(const sx of[-1.45,1.45])for(const sz of[-1.9,1.9]){
+    const w=cyl(.34,.34,.24,new THREE.MeshStandardMaterial({color:0x14181c}),10);w.rotation.z=Math.PI/2;w.position.set(sx,.4,sz);g.add(w);}
+  return g;}
+function addCoasterTrack(cx,cz,ra,rb,h){
+  const railM=new THREE.MeshStandardMaterial({color:0x9aa0a6,metalness:.6,roughness:.4});
+  const tieM=new THREE.MeshStandardMaterial({color:0x6b4a2b});
+  const N=72,UPY=new THREE.Vector3(0,1,0),XA=new THREE.Vector3(1,0,0);
+  for(let i=0;i<N;i++){
+    const a0=i/N*Math.PI*2,a1=(i+1)/N*Math.PI*2,am=(a0+a1)/2;
+    const p0=new THREE.Vector3(cx+Math.cos(a0)*ra,h,cz+Math.sin(a0)*rb);
+    const p1=new THREE.Vector3(cx+Math.cos(a1)*ra,h,cz+Math.sin(a1)*rb);
+    const mid=p0.clone().lerp(p1,.5),len=p0.distanceTo(p1),dir=p1.clone().sub(p0).normalize();
+    const out=new THREE.Vector3(Math.cos(am),0,Math.sin(am)).normalize();
+    for(const side of[-1,1]){const r=cyl(.15,.15,len*1.08,railM,6);
+      r.position.copy(mid).addScaledVector(out,side*1.35);
+      r.quaternion.setFromUnitVectors(UPY,dir);r.castShadow=true;world.add(r);}
+    if(i%3===0){const tie=box(3.6,.2,.5,tieM);tie.position.copy(mid).setY(h-.28);
+      tie.quaternion.setFromUnitVectors(XA,out);world.add(tie);
+      const post=cyl(.2,.2,h,tieM,6);post.position.set(mid.x,h/2,mid.z);post.castShadow=true;world.add(post);}
+  }}
 function referee(){const g=new THREE.Group();const kit=new THREE.MeshStandardMaterial({color:0x1c1c1c});
   for(const sx of[-.16,.16]){const leg=cap(.12,.5,kit);leg.position.set(sx,.55,0);g.add(leg);}
   const t=cap(.24,.5,kit);t.position.set(0,1.4,0);g.add(t);
@@ -963,6 +1012,11 @@ function buildCoaster(){
   // the loop: a real track sitting on the ground at the origin — build speed down the straight and drive up into it
   addLoopTrack(LOOP_X,LOOP_Y,LOOP_Z0,LOOP_Z1,LOOP_R,7);
   addBoost(0,-52,0); addBoost(0,52,0); // run-ups into either mouth
+  signRef=heightSign();signRef.position.set(0,0,-44);signRef.traverse(o=>o.castShadow=true);world.add(signRef);signCool=0;
+  // a running coaster with riders on it — ram the car and it leaves the rails
+  addCoasterTrack(0,105,52,30,1.5);
+  coasterRef=coasterCar();coasterRef.traverse(o=>o.castShadow=true);world.add(coasterRef);
+  coasterRef.userData={t:0,cx:0,cz:105,ra:52,rb:30,h:1.5,derailed:false};
   // ferris wheel — ram the base hard enough and it comes off its hinges and rolls away
   const hub=new THREE.Group(); hub.rotation.order='YXZ';
   const rim=new THREE.Mesh(new THREE.TorusGeometry(16,.6,10,28),new THREE.MeshStandardMaterial({color:0x2dd4ff,emissive:0x2dd4ff,emissiveIntensity:.3}));hub.add(rim);
@@ -1045,7 +1099,7 @@ const CHALLENGES={
   trampoline:[['Catch big air',()=>flags.air],['Pop 10 beach balls',()=>c('beachBall',10)],['Bump 6 bouncers',()=>c('gymGoer',6)]],
   minefield:[['Detonate 8 mines',()=>c('mine',8)],['Bottom out in a trench',()=>gurney.position.y<-4.5],['Catch big air',()=>flags.air]],
   skatepark:[['Drop into the bowl',()=>gurney.position.y<-8],['Ride the half-pipe wall',()=>Math.abs(gurney.position.x+95)<40&&gurney.position.y>5],['Clear the mega-ramp gap',()=>Math.abs(gurney.position.x-95)<20&&gurney.position.z>20&&flags.air]],
-  coaster:[['Loop the loop',()=>flags.loop],['Knock the ferris wheel off its hinges',()=>flags.ferris],['Smash 8 cones',()=>c('trafficCone',8)]],
+  coaster:[['Loop the loop',()=>flags.loop],['Be tall enough to ride',()=>flags.tallEnough],['Derail the coaster',()=>flags.derailed],['Knock the ferris wheel off its hinges',()=>flags.ferris]],
   hospital:[['Total 8 wheelchairs',()=>c('wheelchair',8)],['Scatter 10 IV stands',()=>c('ivStand',10)],['Escape through the exit',()=>gurney.position.z>70&&Math.abs(gurney.position.x)<9]],
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
@@ -1240,6 +1294,28 @@ function tick(){
     const sm=barnRef.userData.smoke;if(sm)for(let i=0;i<sm.length;i++){sm[i].position.y+=dt*3;if(sm[i].position.y>34)sm[i].position.y=22;}
     if(barnRef.userData.fireLight)barnRef.userData.fireLight.intensity=3.5+Math.sin(t*5)*1.5;}
   if(fishGroup)fishGroup.rotation.y+=dt*0.12;
+  if(signRef){ // theme-park height check: lying down you're under the bar, standing up you clear it
+    signCool=Math.max(0,signCool-dt);
+    if(Math.hypot(gurney.position.x-signRef.position.x,gurney.position.z-signRef.position.z)<7){
+      if(riderMode==='surfer'){ if(!flags.tallEnough){flags.tallEnough=true;mayhem+=300;sfxChime();flashToast('\u2705 TALL ENOUGH TO RIDE! +300');} }
+      else if(signCool<=0){signCool=3.5;flashToast('\ud83d\udeab YOU MUST BE THIS TALL');}
+    }}
+  if(coasterRef&&!coasterRef.userData.derailed){
+    const ud=coasterRef.userData; ud.t+=dt*0.3;
+    const ca=Math.cos(ud.t),sa=Math.sin(ud.t);
+    coasterRef.position.set(ud.cx+ca*ud.ra,ud.h+.2,ud.cz+sa*ud.rb);
+    const tx=-sa*ud.ra,tz=ca*ud.rb;
+    coasterRef.rotation.y=Math.atan2(-tx,-tz);            // model nose is -z
+    const d=Math.hypot(gurney.position.x-coasterRef.position.x,gurney.position.z-coasterRef.position.z);
+    if(d<4.8&&Math.abs(v.speed)>12){                       // DERAIL: hand the car to the normal prop physics
+      ud.derailed=true;flags.derailed=true;
+      const nx=coasterRef.position.x-gurney.position.x,nz=coasterRef.position.z-gurney.position.z,nl=Math.hypot(nx,nz)||1;
+      const k=Math.min(Math.abs(v.speed),34)*.95;
+      props.push({g:coasterRef,pos:coasterRef.position,radius:2.6,mass:9,type:'coasterCar',corners:propCorners(coasterRef),
+        vel:new THREE.Vector3(nx/nl*k,12,nz/nl*k),
+        spin:new THREE.Vector3(rand(-5,5),rand(-5,5),rand(-5,5)),asleep:false});
+      mayhem+=800;shake=Math.min(1.8,shake+1.3);sfxSmash(9);flashToast('\ud83c\udfa2 DERAILED! +800');
+    }}
   if(current==='stadium'){ // the officiating is not good
     refCallT-=dt;
     if(refCallT<=0){refCallT=rand(7,13);flashToast(BADCALLS[(Math.random()*BADCALLS.length)|0]);sfxChime();}
