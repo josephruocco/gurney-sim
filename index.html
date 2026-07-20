@@ -232,11 +232,11 @@ applyRider();
 let world=new THREE.Group(); scene.add(world);
 let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
 let barnRef=null, fishGroup=null, ferrisRef=null, signRef=null, coasterRef=null, signCool=0, rivalRef=null, momRef=null, babyT=-1, babyReveal=false,
-    elevRef=null, elevY=0, elevState=0, rocketRef=null, starsRef=null, earthRef=null, spaceT=-1, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
+    elevRef=null, elevY=0, elevState=0, rocketRef=null, starsRef=null, earthRef=null, spaceT=-1, spaceHidden=false, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
 let worldDirty=true;
 function addDrivable(m){drivable.push(m);worldDirty=true;}
-function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;rivalRef=null;momRef=null;babyT=-1;babyReveal=false;elevRef=null;elevState=0;rocketRef=null;starsRef=null;earthRef=null;spaceT=-1;sharkRef=null;sharkDist=999;}
+function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;rivalRef=null;momRef=null;babyT=-1;babyReveal=false;elevRef=null;elevState=0;rocketRef=null;starsRef=null;earthRef=null;spaceT=-1;spaceHidden=false;sharkRef=null;sharkDist=999;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)addDrivable(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
@@ -1147,7 +1147,7 @@ function buildSpace(){
   const rim=new THREE.Mesh(new THREE.TorusGeometry(300,9,10,72),new THREE.MeshStandardMaterial({color:0xeaf4ff}));
   rim.rotation.x=Math.PI/2;rim.position.y=6;earthRef.add(rim);   // the ice wall
   earthRef.position.set(0,-120,0);earthRef.visible=false;world.add(earthRef);
-  spaceT=-1;
+  spaceT=-1;spaceHidden=false;
   scatter(trafficCone,10,.5,1,120,26);
   return new THREE.Vector3(22,0,-30);
 }
@@ -1425,6 +1425,10 @@ function tick(){
       scene.fog=null;
       if(starsRef)starsRef.visible=true;
       if(earthRef){earthRef.visible=true;earthRef.position.set(0,-120-rise*.35,0);}
+    }
+    if(spaceT>2.4&&!spaceHidden){ // drop the launch site once you're up — a pad hanging in orbit ruins the shot
+      spaceHidden=true;
+      for(const o of world.children)if(o!==starsRef&&o!==earthRef&&o!==rocketRef)o.visible=false;
     }
     if(spaceT>4.2&&!flags.flatEarth){flags.flatEarth=true;mayhem+=1500;sfxChime();flashToast('\ud83c\udf0d IT\u2019S FLAT. IT WAS ALWAYS FLAT.');}
   }
