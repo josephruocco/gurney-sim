@@ -85,6 +85,7 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
     <button data-lvl="skatepark">Skatepark</button>
     <button data-lvl="coaster">Coaster</button>
     <button data-lvl="hospital">Hospital</button>
+    <button data-lvl="space">Space</button>
   </div>
   <div class="row">
     <button id="riderBtn">Rider (R)</button>
@@ -230,11 +231,12 @@ applyRider();
 // ---------- world ----------
 let world=new THREE.Group(); scene.add(world);
 let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
-let barnRef=null, fishGroup=null, ferrisRef=null, signRef=null, coasterRef=null, signCool=0, rivalRef=null, momRef=null, babyT=-1, babyReveal=false, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
+let barnRef=null, fishGroup=null, ferrisRef=null, signRef=null, coasterRef=null, signCool=0, rivalRef=null, momRef=null, babyT=-1, babyReveal=false,
+    elevRef=null, elevY=0, elevState=0, rocketRef=null, starsRef=null, earthRef=null, spaceT=-1, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
 let worldDirty=true;
 function addDrivable(m){drivable.push(m);worldDirty=true;}
-function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;rivalRef=null;momRef=null;babyT=-1;babyReveal=false;sharkRef=null;sharkDist=999;}
+function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;rivalRef=null;momRef=null;babyT=-1;babyReveal=false;elevRef=null;elevState=0;rocketRef=null;starsRef=null;earthRef=null;spaceT=-1;sharkRef=null;sharkDist=999;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)addDrivable(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
@@ -1102,8 +1104,56 @@ function buildHospital(){
   return new THREE.Vector3(0,0,-70);
 }
 
-const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio,stadium:buildStadium,trampoline:buildTrampoline,minefield:buildMinefield,skatepark:buildSkatepark,coaster:buildCoaster,hospital:buildHospital};
-const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio',stadium:'Soccer Stadium',trampoline:'Trampoline Park',minefield:'Minefield',skatepark:'Skate Park',coaster:'Coaster Park',hospital:'St. Mercy General'};
+function buildSpace(){
+  scene.background=new THREE.Color(0x8fb8d8);scene.fog=new THREE.Fog(0x8fb8d8,220,650);hemi.intensity=1;
+  slab(300,.4,300,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x8a8f95,roughness:.95}),{drive:true});
+  const white=new THREE.MeshStandardMaterial({color:0xeef2f4,roughness:.5,metalness:.2});
+  const red=new THREE.MeshStandardMaterial({color:0xd8342a});
+  const steel=new THREE.MeshStandardMaterial({color:0x6b7480,metalness:.6,roughness:.5});
+  // pad markings
+  const ring=new THREE.Mesh(new THREE.RingGeometry(15,16.5,48),new THREE.MeshStandardMaterial({color:0xffd02d,side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2;ring.position.set(0,.03,0);world.add(ring);
+  // rocket
+  rocketRef=new THREE.Group();
+  const body=cyl(5,5,52,white,24);body.position.y=26;rocketRef.add(body);
+  const band=cyl(5.12,5.12,3.5,red,24);band.position.y=38;rocketRef.add(band);
+  const nose=cone(5,13,white,24);nose.position.y=58.5;rocketRef.add(nose);
+  for(let i=0;i<4;i++){const a=i/4*Math.PI*2;const fin=box(.7,12,7,red);
+    fin.position.set(Math.cos(a)*5.5,6,Math.sin(a)*5.5);fin.rotation.y=-a;rocketRef.add(fin);}
+  const bell=cone(4,6,steel,20);bell.rotation.x=Math.PI;bell.position.y=-2;rocketRef.add(bell);
+  rocketRef.traverse(o=>o.castShadow=true);world.add(rocketRef);
+  solids.push({position:new THREE.Vector3(0,0,0),radius:6.5});
+  // gantry tower + the elevator platform you drive onto
+  for(const[gx,gz] of[[29,-7],[29,7],[15,-7],[15,7]]){const leg=box(.9,46,.9,steel);leg.position.set(gx,23,gz);leg.castShadow=true;world.add(leg);}
+  for(let h=8;h<=44;h+=9){const belt=box(15,.5,15,steel);belt.position.set(22,h,0);belt.visible=false;world.add(belt);}
+  elevRef=box(13,.7,13,new THREE.MeshStandardMaterial({color:0xffd02d,metalness:.3,roughness:.6}));
+  elevRef.position.set(22,.35,0);elevRef.castShadow=true;world.add(elevRef);addDrivable(elevRef);
+  elevY=.35;elevState=0;
+  addSlope(22,-13,9,9,.7,0,Math.PI); // roll-on ramp so you can get up onto the platform
+  // top bridge across to the rocket, plus the boarding pad
+  const bridge=box(15,.6,7,steel);bridge.position.set(13.5,44.4,0);bridge.castShadow=true;world.add(bridge);addDrivable(bridge);
+  const pad=box(8,.6,8,new THREE.MeshStandardMaterial({color:0x1d3a2a,emissive:0x39ff88,emissiveIntensity:.45}));
+  pad.position.set(4,44.4,0);world.add(pad);addDrivable(pad);
+  // starfield + the flat earth, hidden until you get up there
+  const sg=new THREE.BufferGeometry(),sv=[];
+  for(let i=0;i<900;i++){const r=900,th=Math.random()*6.283,ph=Math.acos(2*Math.random()-1);
+    sv.push(r*Math.sin(ph)*Math.cos(th),r*Math.cos(ph),r*Math.sin(ph)*Math.sin(th));}
+  sg.setAttribute('position',new THREE.Float32BufferAttribute(sv,3));
+  starsRef=new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:3.2}));starsRef.visible=false;world.add(starsRef);
+  earthRef=new THREE.Group();
+  const disc=cyl(300,300,14,new THREE.MeshStandardMaterial({color:0x2f6fb0,roughness:.9}),64);earthRef.add(disc);
+  for(let i=0;i<8;i++){const c=new THREE.Mesh(new THREE.CircleGeometry(rand(35,80),14),new THREE.MeshStandardMaterial({color:0x3f8f4a}));
+    c.rotation.x=-Math.PI/2;const a=rand(0,6.283),r=rand(0,200);c.position.set(Math.cos(a)*r,7.2,Math.sin(a)*r);earthRef.add(c);}
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(300,9,10,72),new THREE.MeshStandardMaterial({color:0xeaf4ff}));
+  rim.rotation.x=Math.PI/2;rim.position.y=6;earthRef.add(rim);   // the ice wall
+  earthRef.position.set(0,-120,0);earthRef.visible=false;world.add(earthRef);
+  spaceT=-1;
+  scatter(trafficCone,10,.5,1,120,26);
+  return new THREE.Vector3(22,0,-30);
+}
+
+const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio,stadium:buildStadium,trampoline:buildTrampoline,minefield:buildMinefield,skatepark:buildSkatepark,coaster:buildCoaster,hospital:buildHospital,space:buildSpace};
+const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio',stadium:'Soccer Stadium',trampoline:'Trampoline Park',minefield:'Minefield',skatepark:'Skate Park',coaster:'Coaster Park',hospital:'St. Mercy General',space:'Cape Gurney'};
 let current='garage', spawn=new THREE.Vector3(), spawnHeading=0; // levels can set spawnHeading to face the player the right way
 // ---------- sandbox: mayhem score + per-level challenges ----------
 let counts={}, flags={}, curChallenges=[];
@@ -1126,6 +1176,7 @@ const CHALLENGES={
   minefield:[['Detonate 8 mines',()=>c('mine',8)],['Bottom out in a trench',()=>gurney.position.y<-4.5],['Catch big air',()=>flags.air]],
   skatepark:[['Drop into the bowl',()=>gurney.position.y<-8],['Ride the half-pipe wall',()=>Math.abs(gurney.position.x+95)<40&&gurney.position.y>5],['Clear the mega-ramp gap',()=>Math.abs(gurney.position.x-95)<20&&gurney.position.z>20&&flags.air]],
   coaster:[['Loop the loop',()=>flags.loop],['Be tall enough to ride',()=>flags.tallEnough],['Derail the coaster',()=>flags.derailed],['Knock the ferris wheel off its hinges',()=>flags.ferris]],
+  space:[['Ride the elevator up',()=>flags.elevTop],['Board the rocket',()=>flags.boarded],['Discover the Earth is flat',()=>flags.flatEarth]],
   hospital:[['Deliver the baby',()=>flags.babyDelivered],['Learn the truth',()=>flags.notTheFather],['Total 8 wheelchairs',()=>c('wheelchair',8)],['Escape through the exit',()=>gurney.position.z>70&&Math.abs(gurney.position.x)<9]],
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
@@ -1154,7 +1205,7 @@ const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;
   if(e.code==='KeyR')toggleRider(); if(e.code==='KeyF')toggleSpin(); if(e.code==='KeyM')cycleMod(); if(e.code==='KeyK')toggleMute();
   if(e.code==='Escape'||e.code==='KeyP')togglePause();
-  const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway',KeyO:'ohio',KeyT:'stadium',KeyB:'trampoline',KeyN:'minefield',KeyU:'skatepark',KeyC:'coaster',KeyI:'hospital'}[e.code]; if(d)loadLevel(d);});
+  const d={Digit1:'garage',Digit2:'lot',Digit3:'park',Digit4:'niagara',Digit5:'pyramids',Digit6:'gym',Digit7:'farm',Digit8:'vegas',Digit9:'ocean',Digit0:'xp',KeyH:'highway',KeyO:'ohio',KeyT:'stadium',KeyB:'trampoline',KeyN:'minefield',KeyU:'skatepark',KeyC:'coaster',KeyI:'hospital',KeyX:'space'}[e.code]; if(d)loadLevel(d);});
 addEventListener('keyup',e=>keys[e.code]=false);
 let lookYaw=0, lookPitch=0;
 addEventListener('mousemove',e=>{lookYaw=(0.5-e.clientX/innerWidth)*1.4; lookPitch=(0.5-e.clientY/innerHeight)*0.7;});
@@ -1258,11 +1309,16 @@ function tick(){
       gurney.position.set(LOOP_X,0.2,zB+7*loopDir);
     } else {
       const t=loopAngle/(Math.PI*2);
-      gurney.position.set(LOOP_X+Math.sin(loopAngle)*LOOP_R,LOOP_Y-Math.cos(loopAngle)*LOOP_R,zA+(zB-zA)*t);
-      gurney.rotation.z=loopAngle*loopDir; // barrel-roll about the direction of travel
+      const nx=-Math.sin(loopAngle),ny=Math.cos(loopAngle); // track normal: points in toward the axis
+      gurney.position.set(LOOP_X+Math.sin(loopAngle)*LOOP_R+nx*0.45,
+                          LOOP_Y-Math.cos(loopAngle)*LOOP_R+ny*0.45,
+                          zA+(zB-zA)*t);                     // sit ON the deck, not embedded in it
+      // under YXZ the roll is composed with the yaw, and Ry(pi) mirrors it — so entering the far
+      // mouth needs the opposite sign or you roll outside the tube and pass through the track
+      gurney.rotation.z=-loopAngle*loopDir;
     }
   }
-  if(!onLoop){
+  if(!onLoop&&spaceT<0){
     const nx=gurney.position.x-Math.sin(v.heading)*v.speed*dt;
     const nz=gurney.position.z-Math.cos(v.heading)*v.speed*dt;
     let blocked=false;
@@ -1343,6 +1399,35 @@ function tick(){
         spin:new THREE.Vector3(rand(-5,5),rand(-5,5),rand(-5,5)),asleep:false});
       mayhem+=800;shake=Math.min(1.8,shake+1.3);sfxSmash(9);flashToast('\ud83c\udfa2 DERAILED! +800');
     }}
+  if(elevRef){ // drive onto the platform and it takes you up the gantry
+    const top=elevY+.35;
+    const onPad=Math.abs(gurney.position.x-22)<6.5&&Math.abs(gurney.position.z)<6.5&&Math.abs(gurney.position.y-top)<2;
+    if(elevState===0&&onPad){elevState=1;sfxChime();flashToast('\ud83d\uded7 GOING UP...');}
+    if(elevState===1){
+      elevY=Math.min(44,elevY+7*dt);
+      elevRef.position.y=elevY;elevRef.updateMatrixWorld(true); // moved geometry must resync before groundAt casts
+      if(elevY>=44){elevState=2;flags.elevTop=true;sfxChime();flashToast('\ud83d\uded7 TOP \u2014 cross to the rocket');}
+    }
+  }
+  if(spaceT<0&&flags.elevTop&&gurney.position.y>40&&Math.hypot(gurney.position.x-4,gurney.position.z)<6){
+    spaceT=0;flags.boarded=true;mayhem+=700;sfxSmash(9);flashToast('\ud83d\ude80 LIFTOFF!');
+  }
+  if(spaceT>=0){ // launch, then the view from up there
+    spaceT+=dt;
+    const tt=Math.min(spaceT,5); // coast to a stop instead of accelerating away forever
+    const rise=24*tt+5*tt*tt;
+    gurney.position.set(4,44.7+rise,0);gurney.rotation.z=0;
+    if(rocketRef)rocketRef.position.y=rise;
+    if(spaceT<2.2)shake=Math.min(1.4,shake+2.4*dt);
+    if(spaceT>1.4){
+      const k=Math.min(1,(spaceT-1.4)/2.6);
+      scene.background=new THREE.Color(0.56*(1-k),0.72*(1-k),0.85*(1-k));
+      scene.fog=null;
+      if(starsRef)starsRef.visible=true;
+      if(earthRef){earthRef.visible=true;earthRef.position.set(0,-120-rise*.35,0);}
+    }
+    if(spaceT>4.2&&!flags.flatEarth){flags.flatEarth=true;mayhem+=1500;sfxChime();flashToast('\ud83c\udf0d IT\u2019S FLAT. IT WAS ALWAYS FLAT.');}
+  }
   if(momRef){ // pick her up, then get to the delivery room
     if(!momRef.userData.aboard){
       if(Math.hypot(gurney.position.x-momRef.position.x,gurney.position.z-momRef.position.z)<4){
@@ -1420,8 +1505,14 @@ function tick(){
   const camH=(spinMode?spinCamHeading:v.heading)+lookYaw;
   const camDist=CAM_D*Math.cos(lookPitch); let camRise=CAM_D*Math.sin(lookPitch);
   const ceil=ceilingAt(gx,gz,gpy+0.5); camRise=Math.min(camRise,ceil-gpy-CAM_H-0.4);
-  camera.position.lerp(new THREE.Vector3(gx+Math.sin(camH)*camDist,gpy+CAM_H+camRise,gz+Math.cos(camH)*camDist),0.12);
-  camera.lookAt(gx,gpy+1.3,gz);
+  if(spaceT>=2.2&&earthRef){ // pull way back and look down at ~30 deg: the disc reads as a plate, edge and all
+    const ey=earthRef.position.y;
+    camera.position.lerp(new THREE.Vector3(0,ey+360,600),0.05);
+    camera.lookAt(0,ey+10,0);
+  }else{
+    camera.position.lerp(new THREE.Vector3(gx+Math.sin(camH)*camDist,gpy+CAM_H+camRise,gz+Math.cos(camH)*camDist),0.12);
+    camera.lookAt(gx,gpy+1.3,gz);
+  }
   if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake*.6;camera.position.z+=(Math.random()-.5)*shake;shake=Math.max(0,shake-dt*4);}
 
   updateParticles(dt);
