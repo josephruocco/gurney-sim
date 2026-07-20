@@ -237,10 +237,45 @@ function buildSurfer(){const g=new THREE.Group();
   const hr=ball(.28,HAIR);hr.position.set(0,3.33,-.05);hr.scale.set(1,.7,1);g.add(hr);
   for(const s of[-1,1]){const a=cap(.1,.7,SKIN);a.position.set(s*.45,2.85,-.05);a.rotation.z=s*1;g.add(a);}
   return g;}
+function submersible(){const g=new THREE.Group();
+  const hull=cyl(2.2,2.2,7,new THREE.MeshStandardMaterial({color:0xdedede,metalness:.5,roughness:.4}),16);hull.rotation.z=Math.PI/2;hull.position.y=2.2;g.add(hull);
+  for(const sx of[-3.5,3.5]){const cap3=ball(2.2,new THREE.MeshStandardMaterial({color:0xcfd6da,metalness:.5}));cap3.position.set(sx,2.2,0);g.add(cap3);}
+  const port=ball(.7,new THREE.MeshStandardMaterial({color:0x0a1a26,metalness:.6,roughness:.2}));port.position.set(-3.9,2.2,0);g.add(port);
+  const fin=box(.2,1.6,2.4,new THREE.MeshStandardMaterial({color:0xd8342a}));fin.position.set(3,3.2,0);g.add(fin);
+  for(const sx of[-1,1]){const skid=box(6,.3,.3,new THREE.MeshStandardMaterial({color:0x333}));skid.position.set(0,.15,sx*1.4);g.add(skid);}
+  return g;}
+function wreckHull(){const g=new THREE.Group();const rust=new THREE.MeshStandardMaterial({color:0x5a4a3a,roughness:1});
+  const hull=cyl(4,5.5,20,rust,16,true);hull.rotation.z=Math.PI/2+.15;hull.position.set(0,3,0);g.add(hull);
+  const deck=box(20,.4,7,rust);deck.position.set(0,5.5,0);deck.rotation.z=.15;g.add(deck);
+  for(const sx of[-6,0,6]){const stack=cyl(.9,.9,4,rust,10);stack.position.set(sx,7,0);stack.rotation.z=.15;g.add(stack);}
+  return g;}
+function oxygenTank(){const g=new THREE.Group();
+  const body=cyl(.35,.35,1.5,new THREE.MeshStandardMaterial({color:0x2fbf6a,metalness:.4,roughness:.4}),12);body.position.y=.75;g.add(body);
+  const cap2=cyl(.14,.14,.3,new THREE.MeshStandardMaterial({color:0xdddddd}),8);cap2.position.y=1.6;g.add(cap2);
+  const band=cyl(.36,.36,.14,new THREE.MeshStandardMaterial({color:0xffffff}),12);band.position.y=1;g.add(band);
+  return g;}
+function defibPad(){const g=new THREE.Group();
+  const box2=box(1.1,.5,.8,new THREE.MeshStandardMaterial({color:0xffd02d,roughness:.6}));box2.position.y=.5;g.add(box2);
+  const cross=box(.5,.14,.02,new THREE.MeshStandardMaterial({color:0xd8342a,emissive:0xd8342a,emissiveIntensity:.4}));cross.position.set(0,.5,.42);g.add(cross);
+  const cross2=box(.14,.5,.02,new THREE.MeshStandardMaterial({color:0xd8342a,emissive:0xd8342a,emissiveIntensity:.4}));cross2.position.set(0,.5,.42);g.add(cross2);
+  const beacon=ball(.14,new THREE.MeshStandardMaterial({color:0xff3030,emissive:0xff3030,emissiveIntensity:.8}));beacon.position.y=.9;g.add(beacon);
+  return g;}
+function addPickup(kind,x,z,heal){const g=kind==='defib'?defibPad():oxygenTank();
+  g.position.set(x,groundAt(x,z,80)??0,z);g.traverse(o=>o.castShadow=true);world.add(g);
+  pickups.push({g,x,z,kind,heal,cool:0});}
+function scubaMask(){const g=new THREE.Group();
+  const glass=box(.42,.24,.06,new THREE.MeshStandardMaterial({color:0x2a6a8a,transparent:true,opacity:.6,metalness:.3}));g.add(glass);
+  const strap=box(.5,.08,.04,new THREE.MeshStandardMaterial({color:0x1a1a1a}));strap.position.z=-.02;g.add(strap);
+  const reg=cyl(.05,.05,.14,new THREE.MeshStandardMaterial({color:0x111}),8);reg.position.set(0,-.22,.04);g.add(reg);
+  return g;}
+let current='garage', spawn=new THREE.Vector3(), spawnHeading=0; // declared here so applyRider() can read `current` at init without a TDZ throw
+const scuba=scubaMask();scuba.visible=false;
 const riderRoot=new THREE.Group(); const supine=buildSupine(),surfer=buildSurfer();
+supine.add(scuba); scuba.position.set(0,1.45,-1); // sits on the supine patient's face
 riderRoot.add(supine,surfer); riderRoot.rotation.order='YXZ'; scene.add(riderRoot);
 let riderMode='supine';
 function applyRider(){supine.visible=riderMode==='supine';surfer.visible=riderMode==='surfer';
+  if(typeof scuba!=='undefined')scuba.visible=(typeof current!=='undefined'&&current==='ocean'&&riderMode==='supine');
   document.getElementById('rider').textContent=riderMode==='supine'?'Supine patient':'Surfer';}
 applyRider();
 
@@ -252,7 +287,7 @@ let barnRef=null, fishGroup=null, ferrisRef=null, signRef=null, coasterRef=null,
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
 let worldDirty=true;
 function addDrivable(m){drivable.push(m);worldDirty=true;}
-function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;rivalRef=null;momRef=null;babyT=-1;babyReveal=false;elevRef=null;elevState=0;rocketRef=null;starsRef=null;earthRef=null;spaceT=-1;spaceHidden=false;sharkRef=null;sharkDist=999;}
+function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];pickups=[];barnRef=null;fishGroup=null;ferrisRef=null;signRef=null;coasterRef=null;rivalRef=null;momRef=null;babyT=-1;babyReveal=false;elevRef=null;elevState=0;rocketRef=null;starsRef=null;earthRef=null;spaceT=-1;spaceHidden=false;sharkRef=null;sharkDist=999;subRef=null;pickups=[];codeBlue=0;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)addDrivable(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
@@ -881,6 +916,15 @@ function buildOcean(){
   for(let i=0;i<30;i++){const f=fish();const r=rand(15,95),a=rand(0,6.28);f.position.set(Math.cos(a)*r,rand(3,15),Math.sin(a)*r);f.rotation.y=-a+Math.PI/2;f.scale.setScalar(rand(.6,1.5));fishGroup.add(f);}
   world.add(fishGroup);
   scatter(urchin,14,.6,2,130,10);
+  // the lost submersible, resting far out
+  const sub=submersible();sub.position.set(-120,0,110);sub.rotation.y=.6;sub.traverse(o=>o.castShadow=true);world.add(sub);
+  subRef=sub;
+  // a sunken wreck, oxygen tanks spilled around it
+  const wreck=wreckHull();wreck.position.set(120,0,-110);wreck.rotation.y=-.5;wreck.traverse(o=>o.castShadow=true);world.add(wreck);
+  solids.push({position:new THREE.Vector3(120,0,-110),radius:9});
+  for(let i=0;i<5;i++){const a=rand(0,6.28);addPickup('oxygen',120+Math.cos(a)*13,-110+Math.sin(a)*13,26);}
+  for(let i=0;i<4;i++)addPickup('oxygen',rand(-90,90),rand(-90,90),22);
+  addPickup('defib',0,40,0);
   // a shark that actually hunts you: slower turning than the gurney, so you out-manoeuvre rather than outrun it
   sharkRef=shark();sharkRef.position.set(78,3,78);sharkRef.userData.heading=Math.PI;sharkRef.userData.cool=0;
   sharkRef.traverse(o=>o.castShadow=true);world.add(sharkRef);sharkBites=0;sharkBonks=0;
@@ -1012,7 +1056,7 @@ function buildMinefield(){
   addBarbedWire(-100,-84,100,-84); addBarbedWire(-100,84,100,84);
   addBarbedWire(-46,-60,-46,60); addBarbedWire(36,-60,36,60);
   scatter(mine,60,.5,1.5,100,8);
-  for(const p of props)if(p.type==='mine')p.onKnock=()=>{shake=Math.min(1.6,shake+1);gurney.userData.vy=Math.max(gurney.userData.vy,16);v.speed*=-1.4;hurt(14,'Stepped on a mine');};
+  for(const p of props)if(p.type==='mine')p.onKnock=()=>{shake=Math.min(1.6,shake+1);gurney.userData.vy=Math.max(gurney.userData.vy,16);v.speed*=-1.4;hurt(14,'Blown up by a landmine');};
   scatter(barrel,10,.7,3,100,10); scatter(trafficCone,10,.5,1,100,10);
   addJumpRamp(0,-72,7,3,0); addBoost(0,66,0);
   return new THREE.Vector3(0,0,0);
@@ -1170,7 +1214,6 @@ function buildSpace(){
 
 const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio,stadium:buildStadium,trampoline:buildTrampoline,minefield:buildMinefield,skatepark:buildSkatepark,coaster:buildCoaster,hospital:buildHospital,space:buildSpace};
 const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio',stadium:'Soccer Stadium',trampoline:'Trampoline Park',minefield:'Minefield',skatepark:'Skate Park',coaster:'Coaster Park',hospital:'St. Mercy General',space:'Cape Gurney'};
-let current='garage', spawn=new THREE.Vector3(), spawnHeading=0; // levels can set spawnHeading to face the player the right way
 // ---------- sandbox: mayhem score + per-level challenges ----------
 let counts={}, flags={}, curChallenges=[];
 const c=(t,n)=>(counts[t]||0)>=n;
@@ -1183,7 +1226,7 @@ const CHALLENGES={
   gym:[['Bench press: smash 4 benches',()=>c('weightBench',4)],['Photobomb 6 gym-goers',()=>c('gymGoer',6)],['Scatter 6 dumbbells',()=>c('dumbbell',6)]],
   farm:[['Tip 6 cows',()=>c('cow',6)],['Burn down the barn',()=>!!(barnRef&&barnRef.userData.onFire)],['Topple 3 power poles',()=>c('powerPole',3)]],
   vegas:[['Drive over the Sphere',()=>flags.sphere],['Smash 10 cones',()=>c('trafficCone',10)],['Topple 3 power poles',()=>c('powerPole',3)]],
-  ocean:[['Squash 8 sea urchins',()=>c('urchin',8)],['Get chomped by the shark',()=>sharkBites>0],['Bonk the shark on the nose',()=>sharkBonks>0]],
+  ocean:[['Find the lost submersible',()=>flags.foundSub],['Bonk the shark on the nose',()=>sharkBonks>0],['Grab an oxygen tank',()=>flags.gotO2]],
   xp:[['Catch big air',()=>flags.air],['Hit 140+ km/h',()=>Math.abs(v.speed)*4.2>=140],['Roam to the far hills',()=>Math.hypot(gurney.position.x,gurney.position.z)>150]],
   highway:[['Cause a 12-car pileup',()=>c('car',12)],['Hit 160+ km/h',()=>Math.abs(v.speed)*4.2>=160],['Reach the far end',()=>Math.abs(gurney.position.z)>190]],
   ohio:[['Flatten 40 cornstalks',()=>c('cornStalk',40)],['Flatten 5 possums',()=>c('possum',5)],['Escape Ohio',()=>Math.hypot(gurney.position.x,gurney.position.z)>170]],
@@ -1211,7 +1254,7 @@ function judgeLanding(impact,gr){
     comboCount++; comboTimer=3; sfxChime();
     flashToast('\u2728 PERFECT LANDING +'+bonus);
   }else if(err<0.7){
-    hurt(3+impact*0.35,'Rough landing');
+    hurt(3+impact*0.35,'Succumbed to injuries');
     flashToast('\u27b0 ROUGH LANDING');
   }else{
     const dmg=12+impact*0.8+err*9;
@@ -1232,7 +1275,7 @@ function respawn(){gurney.position.copy(spawn);gurney.position.y=groundAt(spawn.
   // snap camera behind the gurney so spawn isn't a weird half-second of floor
   camera.position.set(gurney.position.x+Math.sin(spawnHeading)*CAM_D,gurney.position.y+CAM_H,gurney.position.z+Math.cos(spawnHeading)*CAM_D);
   camera.lookAt(gurney.position.x,gurney.position.y+1.3,gurney.position.z);}
-function loadLevel(name){clearWorld();spawnHeading=0;spawn=LEVELS[name]();current=name;respawn();
+function loadLevel(name){clearWorld();spawnHeading=0;spawn=LEVELS[name]();current=name;respawn();applyRider();
   comboCount=0;comboTimer=0;airTime=0;shake=0;particles=[];setChallenges(name);
   document.getElementById('loc').textContent=LOC[name];
   for(const b of document.querySelectorAll('[data-lvl]'))b.classList.toggle('on',b.dataset.lvl===name);}
@@ -1266,10 +1309,14 @@ let onLoop=false, loopAngle=0, loopDir=1, groundPitch=0;
 let smashed=0, mayhem=0, comboCount=0, comboTimer=0, airTime=0;
 // condition: the run's real resource. Stunts spend it; landing well spends less.
 let condition=100, pitchVel=0, wasAir=false, adrenaline=0, ecgPhase=0, flatlined=false;
+let pickups=[], codeBlue=0, deathCause='', subRef=null;
 const ecgBuf=new Array(108).fill(0);
 function hurt(n,why){ if(flatlined)return;
   condition=Math.max(0,condition-n); adrenaline=Math.min(1,adrenaline+n/45);
-  if(condition<=0)flatline(why); }
+  if(condition<=0&&codeBlue<=0){ // heart stops — you have a few seconds to reach a defibrillator
+    codeBlue=7; deathCause=why||'Succumbed to injuries';
+    shake=Math.min(1.8,shake+1.2); sfxSmash(4); flashToast('\ud83d\udea8 CODE BLUE \u2014 find a defibrillator!');
+  }}
 function flatline(why){ flatlined=true; runActive=false; timerEl.textContent='';
   const best=+(localStorage.getItem('gurney_best')||0),isNew=mayhem>best;
   if(isNew)localStorage.setItem('gurney_best',mayhem);
@@ -1342,6 +1389,13 @@ function drawVitals(dt){
   }
   adrenaline=Math.max(0,adrenaline-dt*0.55);
   let label='STABLE',col='#5cd6a8';
+  if(codeBlue>0){vHR.textContent='--';vBP.textContent='V-FIB';vO2.textContent=Math.max(40,o2-20);
+    for(const el of[vHR,vBP,vO2])el.style.color='#ff2d2d';
+    vStatus.textContent='CODE BLUE '+Math.ceil(codeBlue)+'s';vStatus.style.color='#fff';vStatus.style.background='#ff2d2daa';
+    ecgBuf.shift();ecgBuf.push((Math.sin(performance.now()*0.05)+Math.sin(performance.now()*0.13))*0.3); // chaotic v-fib trace
+    const W=ecgCanvas.width,H=ecgCanvas.height;ecgCtx.clearRect(0,0,W,H);ecgCtx.strokeStyle='#ff2d2d';ecgCtx.lineWidth=3;ecgCtx.beginPath();
+    for(let i=0;i<ecgBuf.length;i++){const x=i/(ecgBuf.length-1)*W,y=H*0.6-ecgBuf[i]*H*0.46;i?ecgCtx.lineTo(x,y):ecgCtx.moveTo(x,y);}ecgCtx.stroke();
+    return;}
   for(const[thr,lab,cc] of COND){ if(flatlined){label='ASYSTOLE';col='#ff2d2d';break;} if(c>=thr){label=lab;col=cc;break;} }
   vHR.textContent=hr; vBP.textContent=sys+'/'+dia; vO2.textContent=o2;
   for(const el of[vHR,vBP,vO2])el.style.color=col;
@@ -1420,7 +1474,7 @@ function tick(){
     const nz=gurney.position.z-Math.cos(v.heading)*v.speed*dt;
     let blocked=false;
     for(const s of solids){if(Math.hypot(nx-s.position.x,nz-s.position.z)<s.radius+1.2){blocked=true;break;}}
-    if(blocked){if(Math.abs(v.speed)>18)hurt(Math.abs(v.speed)*0.25,'Hit a wall');v.speed*=-0.3;} else{gurney.position.x=nx;gurney.position.z=nz;}
+    if(blocked){if(Math.abs(v.speed)>18)hurt(Math.abs(v.speed)*0.25,'Smeared across a wall');v.speed*=-0.3;} else{gurney.position.x=nx;gurney.position.z=nz;}
 
     // vertical: ground-follow, ramps, and free-fall off edges (Niagara!)
     gr=groundAt(gurney.position.x,gurney.position.z,gurney.position.y);
@@ -1602,7 +1656,7 @@ function tick(){
       ud.heading+=Math.PI; // sent reeling the other way
     }else if(sharkDist<4.4&&ud.cool<=0&&ud.stun<=0){ud.cool=2.5;sharkBites++;
       shake=Math.min(1.8,shake+1.1);sfxSmash(6);
-      gurney.userData.vy=Math.max(gurney.userData.vy,13);v.speed*=0.5;hurt(11,'Eaten'); // scrub speed, never reverse — reversing pins you on the shark
+      gurney.userData.vy=Math.max(gurney.userData.vy,13);v.speed*=0.5;hurt(11,'Eaten by a shark'); // scrub speed, never reverse — reversing pins you on the shark
       flashToast('🦈 CHOMP!');}
   }
 
@@ -1632,6 +1686,20 @@ function tick(){
   needleEl.setAttribute('transform','rotate('+(-90+Math.min(1,kmh/200)*180)+' 60 60)');
   scoreEl.textContent=mayhem;
   comboEl.textContent=comboCount>1?('x'+(1+Math.min(comboCount-1,20)*0.2).toFixed(1)):'';
+  // pickups: oxygen restores condition; defib revives you during a CODE BLUE
+  for(const pk of pickups){ if(!pk.g.visible)continue;
+    pk.g.rotation.y+=dt*1.6; pk.g.position.y=(groundAt(pk.x,pk.z,80)??0)+Math.sin(performance.now()*0.003+pk.x)*0.25+0.2;
+    if(Math.hypot(gurney.position.x-pk.x,gurney.position.z-pk.z)<3.4){
+      if(pk.kind==='defib'){
+        if(codeBlue>0){codeBlue=0;condition=45;flatlined=false;pk.g.visible=false;sfxChime();flashToast('\u26a1 CLEAR! \u2014 revived');}
+      }else{ // oxygen
+        flags.gotO2=true; if(condition<100||codeBlue>0){codeBlue=0;flatlined=false;condition=Math.min(100,condition+pk.heal);pk.g.visible=false;
+          sfxChime();flashToast('\ud83e\uddea +O\u2082 '+pk.heal+'%');}
+      }
+    }}
+  if(codeBlue>0){codeBlue-=dt; if(codeBlue<=0)flatline(deathCause);}
+  if(subRef&&!flags.foundSub&&Math.hypot(gurney.position.x-subRef.position.x,gurney.position.z-subRef.position.z)<9){
+    flags.foundSub=true;mayhem+=1000;sfxChime();flashToast('\ud83d\udd26 FOUND THE SUBMERSIBLE! +1000');}
   drawVitals(dt);
   if(toastT>0){toastT-=dt;if(toastT<=0)document.getElementById('toast').style.opacity=0;}
   renderer.render(scene,camera);
