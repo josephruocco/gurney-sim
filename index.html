@@ -229,11 +229,11 @@ applyRider();
 // ---------- world ----------
 let world=new THREE.Group(); scene.add(world);
 let drivable=[], solids=[], props=[], boosts=[], ceilings=[], bounces=[];
-let barnRef=null, fishGroup=null, ferrisRef=null;
+let barnRef=null, fishGroup=null, ferrisRef=null, sharkRef=null, sharkDist=999, sharkBites=0, sharkBonks=0, refCallT=0, flopCount=0;
 const ray=new THREE.Raycaster(), DOWN=new THREE.Vector3(0,-1,0), UP=new THREE.Vector3(0,1,0);
 let worldDirty=true;
 function addDrivable(m){drivable.push(m);worldDirty=true;}
-function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;}
+function clearWorld(){worldDirty=true;scene.remove(world);world=new THREE.Group();scene.add(world);drivable=[];solids=[];props=[];boosts=[];ceilings=[];bounces=[];barnRef=null;fishGroup=null;ferrisRef=null;sharkRef=null;sharkDist=999;}
 function slab(w,h,d,x,y,z,mat,opt={}){const m=box(w,h,d,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);
   if(opt.drive)addDrivable(m); if(opt.solid)solids.push({position:m.position,radius:opt.r??Math.max(w,d)*0.55}); if(opt.ceil)ceilings.push(m); return m;}
 function ceilingAt(x,z,fromY){if(!ceilings.length)return Infinity;ray.set(new THREE.Vector3(x,fromY,z),UP);const h=ray.intersectObjects(ceilings,false);return h.length?h[0].point.y:Infinity;}
@@ -302,27 +302,50 @@ function addHalfpipe(cx,cz,len,R,W){
 // corkscrew: the track spirals around a horizontal axis, so you enter one end at ground level,
 // roll through a full inversion, and come out the far end — not back where you started.
 function addLoopTrack(cx,cy,z0,z1,R,W){
-  const mat=new THREE.MeshStandardMaterial({color:0xd83a3a,metalness:.35,roughness:.45});
-  const railM=new THREE.MeshStandardMaterial({color:0xf0f0f0});
-  const segs=64,total=Math.PI*2,dz=(z1-z0)/segs,dTan=R*total/segs;
-  const segLen=Math.hypot(dz,dTan)*1.2;
-  for(let i=0;i<segs;i++){
-    const t=(i+.5)/segs,a=t*total;
-    const p=new THREE.Vector3(cx+Math.sin(a)*R,cy-Math.cos(a)*R,z0+(z1-z0)*t);
-    const T=new THREE.Vector3(Math.cos(a)*dTan,Math.sin(a)*dTan,dz).normalize(); // helix tangent
-    const N=new THREE.Vector3(-Math.sin(a),Math.cos(a),0);                        // points in toward the axis = "up" for the rider
-    const s=box(W,.5,segLen,mat);
-    s.position.copy(p);s.up.copy(N);s.lookAt(p.clone().add(T));s.castShadow=true;world.add(s);
-    for(const side of[-1,1]){const r=box(.3,1,segLen,railM);
-      r.position.copy(p);r.up.copy(N);r.lookAt(p.clone().add(T));r.translateX(side*W/2);r.translateY(.5);world.add(r);}
+  // One continuous swept ribbon along the helix. Building this from discrete planks makes them
+  // overlap ~8 deep along the axis and splay out like a turbine, so sweep a strip instead.
+  const segs=120,total=Math.PI*2;
+  const deck=[],lipL=[],lipR=[];
+  for(let i=0;i<=segs;i++){
+    const t=i/segs,a=t*total;
+    const P=new THREE.Vector3(cx+Math.sin(a)*R,cy-Math.cos(a)*R,z0+(z1-z0)*t);
+    const T=new THREE.Vector3(Math.cos(a)*R*total,Math.sin(a)*R*total,z1-z0).normalize();
+    const N=new THREE.Vector3(-Math.sin(a),Math.cos(a),0);              // radially inward = rider's "up"
+    const X=new THREE.Vector3().crossVectors(T,N).normalize();          // across the track
+    const A=P.clone().addScaledVector(X,W/2),B=P.clone().addScaledVector(X,-W/2);
+    deck.push(A,B);
+    lipL.push(A,A.clone().addScaledVector(N,.9));
+    lipR.push(B,B.clone().addScaledVector(N,.9));
+  }
+  const strip=(pts,col,ds)=>{
+    const v=[],idx=[];
+    for(const q of pts)v.push(q.x,q.y,q.z);
+    for(let i=0;i<segs;i++){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+    geo.setIndex(idx);geo.computeVertexNormals();
+    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:col,side:THREE.DoubleSide,metalness:.3,roughness:.5}));
+    m.castShadow=true;m.receiveShadow=true;world.add(m);return m;};
+  strip(deck,0xd83a3a); strip(lipL,0xf0f0f0); strip(lipR,0xf0f0f0);
+  // cross ties under the deck so it reads as track, spaced out enough not to bunch
+  for(let i=0;i<24;i++){
+    const a=(i+.5)/24*total,t=(i+.5)/24;
+    const P=new THREE.Vector3(cx+Math.sin(a)*R,cy-Math.cos(a)*R,z0+(z1-z0)*t);
+    const N=new THREE.Vector3(-Math.sin(a),Math.cos(a),0);
+    const tie=cyl(.22,.22,W,new THREE.MeshStandardMaterial({color:0x8a8f95}),6);
+    const T=new THREE.Vector3(Math.cos(a)*R*total,Math.sin(a)*R*total,z1-z0).normalize();
+    const X=new THREE.Vector3().crossVectors(T,N).normalize();
+    tie.position.copy(P).addScaledVector(N,-.45);
+    tie.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),X);
+    tie.castShadow=true;world.add(tie);
   }
   // support pylons along the run
   for(let i=0;i<=4;i++){const z=z0+(z1-z0)*(i/4);
     const pil=cyl(1.1,1.1,cy,new THREE.MeshStandardMaterial({color:0x8a8f95}),10);
     pil.position.set(cx+R+2.5,cy/2,z);pil.castShadow=true;world.add(pil);}
   // run-in markings at both mouths
-  for(const[z,s] of[[z0,-1],[z1,1]]){const strip=box(W,.06,22,new THREE.MeshStandardMaterial({color:0xd83a3a,emissive:0xd83a3a,emissiveIntensity:.25}));
-    strip.position.set(cx,.08,z+s*13);world.add(strip);}
+  for(const[z,sd] of[[z0,-1],[z1,1]]){const mk=box(W,.06,22,new THREE.MeshStandardMaterial({color:0xd83a3a,emissive:0xd83a3a,emissiveIntensity:.25}));
+    mk.position.set(cx,.08,z+sd*13);world.add(mk);}
 }
 function addBoost(x,z,yaw=0){const g=new THREE.Group();
   const pad=new THREE.Mesh(new THREE.PlaneGeometry(4,8),new THREE.MeshStandardMaterial({color:0x0d2a17,emissive:0x39ff88,emissiveIntensity:.6,side:THREE.DoubleSide}));pad.rotation.x=-Math.PI/2;g.add(pad);
@@ -461,6 +484,15 @@ function soccerBall(){const g=new THREE.Group();const white=new THREE.MeshStanda
   const b=ball(.35,white);b.position.y=.35;g.add(b);const blk=new THREE.MeshStandardMaterial({color:0x1a1a1a});
   for(let k=0;k<6;k++){const patch=new THREE.Mesh(new THREE.CircleGeometry(.12,5),blk);const a=rand(0,6.28),el=rand(-1,1);
     patch.position.set(.35*Math.cos(a)*Math.sqrt(1-el*el),.35+.35*el,.35*Math.sin(a)*Math.sqrt(1-el*el));patch.lookAt(patch.position.clone().multiplyScalar(2).setY(patch.position.y-.35));g.add(patch);}
+  return g;}
+function referee(){const g=new THREE.Group();const kit=new THREE.MeshStandardMaterial({color:0x1c1c1c});
+  for(const sx of[-.16,.16]){const leg=cap(.12,.5,kit);leg.position.set(sx,.55,0);g.add(leg);}
+  const t=cap(.24,.5,kit);t.position.set(0,1.4,0);g.add(t);
+  const hd=ball(.23,SKIN);hd.position.set(0,1.9,0);g.add(hd);
+  const hr=ball(.25,HAIR);hr.position.set(0,1.98,0);hr.scale.set(1,.7,1);g.add(hr);
+  for(const sx2 of[-1,1]){const a=cap(.08,.45,kit);a.position.set(sx2*.3,1.45,0);a.rotation.z=sx2*.35;g.add(a);}
+  const card=box(.22,.32,.03,new THREE.MeshStandardMaterial({color:0xf5d020,emissive:0xf5d020,emissiveIntensity:.3}));
+  card.position.set(.34,2.1,0);g.add(card);
   return g;}
 function soccerPlayer(col){const g=new THREE.Group();const jersey=new THREE.MeshStandardMaterial({color:col??[0xd8342a,0x2a5fd8][Math.random()<.5?0:1]});
   for(const sx of[-.18,.18]){const leg=cap(.13,.55,PANTS);leg.position.set(sx,.6,0);leg.rotation.x=sx>0?-.4:.4;g.add(leg);}
@@ -686,6 +718,25 @@ function coralChunk(){const cols=[0xff6f91,0xffb84d,0x9b5cff,0xff5c8a,0x4dd0e1];
   for(let k=0;k<5;k++){const arm=cyl(.15,.28,rand(1.5,3),m,6);arm.position.set(rand(-1,1),rand(1.5,2.6),rand(-1,1));arm.rotation.set(rand(-.5,.5),0,rand(-.5,.5));g.add(arm);}return g;}
 function fish(){const cols=[0xffa030,0xff5050,0x50a0ff,0xffe050,0xff80c0];const m=new THREE.MeshStandardMaterial({color:cols[(Math.random()*cols.length)|0],roughness:.5});
   const g=new THREE.Group();const body=ball(.5,m);body.scale.set(1.6,.8,.7);g.add(body);const tail=cone(.35,.6,m,4);tail.rotation.z=Math.PI/2;tail.position.x=-.8;g.add(tail);return g;}
+function shark(){
+  const g=new THREE.Group();
+  const grey=new THREE.MeshStandardMaterial({color:0x546572,roughness:.75});
+  const pale=new THREE.MeshStandardMaterial({color:0xcfd6da,roughness:.75});
+  const dark=new THREE.MeshStandardMaterial({color:0x1a1012});
+  const body=ball(1.6,grey);body.scale.set(1,.9,2.6);g.add(body); // nose points -z, same convention as the gurney
+  const belly=ball(1.45,pale);belly.scale.set(.92,.55,2.4);belly.position.y=-.55;g.add(belly);
+  const snout=cone(1.15,2.6,grey,12);snout.rotation.x=-Math.PI/2;snout.position.z=-4.5;g.add(snout);
+  const mouth=box(1.7,.3,1.2,dark);mouth.position.set(0,-.62,-3.7);g.add(mouth);
+  for(let i=0;i<7;i++){const t=cone(.1,.34,pale,4);t.position.set(-.66+i*.22,-.46,-3.9);t.rotation.x=Math.PI;g.add(t);}
+  for(const sx of[-.78,.78]){const e=ball(.17,dark);e.position.set(sx,.38,-2.5);g.add(e);}
+  const dorsal=cone(1.05,2.4,grey,3);dorsal.scale.set(.22,1,1);dorsal.position.set(0,1.7,.2);g.add(dorsal);
+  for(const sx of[-1,1]){const f=cone(.9,2.2,grey,3);f.scale.set(.2,1,.85);f.position.set(sx*1.5,-.5,-1.2);f.rotation.z=sx*1.25;f.rotation.x=.25;g.add(f);}
+  const tail=new THREE.Group();tail.position.z=3.4;
+  const stalk=ball(.8,grey);stalk.scale.set(.7,.7,1.4);tail.add(stalk);
+  const upper=cone(.7,2.4,grey,3);upper.scale.set(.2,1,.8);upper.position.set(0,1.1,1.4);upper.rotation.x=-.5;tail.add(upper);
+  const lower=cone(.5,1.5,grey,3);lower.scale.set(.2,1,.8);lower.position.set(0,-.7,1.3);lower.rotation.x=Math.PI+.4;tail.add(lower);
+  g.add(tail);g.userData.tail=tail;
+  return g;}
 function urchin(){const m=new THREE.MeshStandardMaterial({color:0x3a2a4a,roughness:.7});const g=new THREE.Group();const b=ball(.45,m);b.position.y=.5;g.add(b);
   for(let k=0;k<14;k++){const sp=cyl(.03,.06,.5,m,4);const a=rand(0,6.28);sp.position.set(.45*Math.cos(a),.5+rand(-.4,.4),.45*Math.sin(a));sp.rotation.set(rand(0,3),rand(0,3),rand(0,3));g.add(sp);}return g;}
 function buildFarm(){
@@ -744,6 +795,9 @@ function buildOcean(){
   for(let i=0;i<30;i++){const f=fish();const r=rand(15,95),a=rand(0,6.28);f.position.set(Math.cos(a)*r,rand(3,15),Math.sin(a)*r);f.rotation.y=-a+Math.PI/2;f.scale.setScalar(rand(.6,1.5));fishGroup.add(f);}
   world.add(fishGroup);
   scatter(urchin,14,.6,2,130,10);
+  // a shark that actually hunts you: slower turning than the gurney, so you out-manoeuvre rather than outrun it
+  sharkRef=shark();sharkRef.position.set(78,3,78);sharkRef.userData.heading=Math.PI;sharkRef.userData.cool=0;
+  sharkRef.traverse(o=>o.castShadow=true);world.add(sharkRef);sharkBites=0;sharkBonks=0;
   addJumpRamp(0,-25,7,3,0); addBoost(0,25,0);
   return new THREE.Vector3(0,0,0);
 }
@@ -839,6 +893,9 @@ function buildStadium(){
   for(const p of props)if(p.type==='soccerPlayer')p.wander={x:p.pos.x,z:p.pos.z,rx:rand(4,8),rz:rand(4,8),speed:rand(.5,.9),seed:rand(0,10)};
   for(const gz of[-52,52]){addProp(soccerPlayer(0xf0e030),0,gz,.5,1,'soccerPlayer');
     props[props.length-1].wander={x:0,z:gz,rx:3.2,rz:0,speed:.8,seed:rand(0,10)};}
+  scatter(referee,3,.5,1,40,10);
+  for(const p of props)if(p.type==='referee')p.wander={x:p.pos.x,z:p.pos.z,rx:rand(6,12),rz:rand(6,12),speed:rand(.6,1),seed:rand(0,10)};
+  refCallT=rand(5,9); flopCount=0;
   addJumpRamp(0,-20,7,3,0); addBoost(0,20,0);
   return new THREE.Vector3(0,0,0);
 }
@@ -980,11 +1037,11 @@ const CHALLENGES={
   gym:[['Bench press: smash 4 benches',()=>c('weightBench',4)],['Photobomb 6 gym-goers',()=>c('gymGoer',6)],['Scatter 6 dumbbells',()=>c('dumbbell',6)]],
   farm:[['Tip 6 cows',()=>c('cow',6)],['Burn down the barn',()=>!!(barnRef&&barnRef.userData.onFire)],['Topple 3 power poles',()=>c('powerPole',3)]],
   vegas:[['Drive over the Sphere',()=>flags.sphere],['Smash 10 cones',()=>c('trafficCone',10)],['Topple 3 power poles',()=>c('powerPole',3)]],
-  ocean:[['Squash 8 sea urchins',()=>c('urchin',8)],['Catch big air',()=>flags.air],['Reach the deep edge',()=>Math.hypot(gurney.position.x,gurney.position.z)>150]],
+  ocean:[['Squash 8 sea urchins',()=>c('urchin',8)],['Get chomped by the shark',()=>sharkBites>0],['Bonk the shark on the nose',()=>sharkBonks>0]],
   xp:[['Catch big air',()=>flags.air],['Hit 140+ km/h',()=>Math.abs(v.speed)*4.2>=140],['Roam to the far hills',()=>Math.hypot(gurney.position.x,gurney.position.z)>150]],
   highway:[['Cause a 12-car pileup',()=>c('car',12)],['Hit 160+ km/h',()=>Math.abs(v.speed)*4.2>=160],['Reach the far end',()=>Math.abs(gurney.position.z)>190]],
   ohio:[['Flatten 40 cornstalks',()=>c('cornStalk',40)],['Flatten 5 possums',()=>c('possum',5)],['Escape Ohio',()=>Math.hypot(gurney.position.x,gurney.position.z)>170]],
-  stadium:[['Score a goal',()=>Math.abs(gurney.position.z)>52&&Math.abs(gurney.position.x)<4.2],['Scatter 15 soccer balls',()=>c('soccerBall',15)],['Trample 8 players',()=>c('soccerPlayer',8)]],
+  stadium:[['Score a goal',()=>Math.abs(gurney.position.z)>52&&Math.abs(gurney.position.x)<4.2],['Cause 6 dramatic flops',()=>flopCount>=6],['Trample 8 players',()=>c('soccerPlayer',8)]],
   trampoline:[['Catch big air',()=>flags.air],['Pop 10 beach balls',()=>c('beachBall',10)],['Bump 6 bouncers',()=>c('gymGoer',6)]],
   minefield:[['Detonate 8 mines',()=>c('mine',8)],['Bottom out in a trench',()=>gurney.position.y<-4.5],['Catch big air',()=>flags.air]],
   skatepark:[['Drop into the bowl',()=>gurney.position.y<-8],['Ride the half-pipe wall',()=>Math.abs(gurney.position.x+95)<40&&gurney.position.y>5],['Clear the mega-ramp gap',()=>Math.abs(gurney.position.x-95)<20&&gurney.position.z>20&&flags.air]],
@@ -995,6 +1052,8 @@ function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challe
   curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
 function setChallenges(level){counts={};flags={};curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
 function checkChallenges(){let changed=false;for(const ch of curChallenges){if(!ch.done&&ch.test()){ch.done=true;mayhem+=300;flashToast('✅ '+ch.label+'  +300');sfxChime();changed=true;}}if(changed)renderChallenges();}
+const FLOPS=['\u26bd OOOF! (never touched him)','\u26bd He\u2019s down! Replay says otherwise','\u26bd Clutching the wrong leg','\u26bd Rolling... still rolling...'];
+const BADCALLS=['\ud83d\udfe8 YELLOW \u2014 for existing','\ud83d\udfe5 RED CARD \u2014 wrong player','\u26a0\ufe0f OFFSIDE (nobody moved)','\ud83d\udcef PENALTY \u2014 unclear why','\u26bd GOAL DISALLOWED \u2014 vibes'];
 let toastT=0;function flashToast(t){const el=document.getElementById('toast');el.textContent=t;el.style.opacity=1;toastT=2.4;}
 
 function groundAt(x,z,fromY){
@@ -1056,8 +1115,16 @@ function stepProps(dt){
       }}
     if(p.asleep){ // highway traffic cruises in its lane until hit
       if(p.drift){p.pos.z+=p.drift*dt; if(p.pos.z>190)p.pos.z=-190; else if(p.pos.z<-190)p.pos.z=190; p.g.position.copy(p.pos);}
-      else if(p.wander){const w=p.wander,t=performance.now()*0.001*w.speed+w.seed; // stadium: players/balls roam until hit
-        p.pos.x=w.x+Math.sin(t)*w.rx; p.pos.z=w.z+Math.cos(t)*w.rz; p.g.position.copy(p.pos);}
+      else if(p.wander){
+        if(p.flopT>0){ // theatrical dive: lie down, roll about, pop back up
+          p.flopT-=dt; p.g.rotation.x=-1.45; p.g.rotation.z=Math.sin(performance.now()*0.006)*0.35;
+          if(p.flopT<=0){p.g.rotation.x=0;p.g.rotation.z=0;}
+        }else{
+          const w=p.wander,t=performance.now()*0.001*w.speed+w.seed; // stadium: players/balls roam until hit
+          p.pos.x=w.x+Math.sin(t)*w.rx; p.pos.z=w.z+Math.cos(t)*w.rz; p.g.position.copy(p.pos);
+          if(p.type==='soccerPlayer'&&Math.hypot(p.pos.x-gurney.position.x,p.pos.z-gurney.position.z)<11&&Math.random()<0.03){
+            p.flopT=rand(2,3.5); flopCount++; mayhem+=25; flashToast(FLOPS[(Math.random()*FLOPS.length)|0]);}
+        }}
       continue;}
     p.vel.y-=G*dt; p.pos.addScaledVector(p.vel,dt);
     const gr=groundAt(p.pos.x,p.pos.z,p.pos.y);
@@ -1173,6 +1240,38 @@ function tick(){
     const sm=barnRef.userData.smoke;if(sm)for(let i=0;i<sm.length;i++){sm[i].position.y+=dt*3;if(sm[i].position.y>34)sm[i].position.y=22;}
     if(barnRef.userData.fireLight)barnRef.userData.fireLight.intensity=3.5+Math.sin(t*5)*1.5;}
   if(fishGroup)fishGroup.rotation.y+=dt*0.12;
+  if(current==='stadium'){ // the officiating is not good
+    refCallT-=dt;
+    if(refCallT<=0){refCallT=rand(7,13);flashToast(BADCALLS[(Math.random()*BADCALLS.length)|0]);sfxChime();}
+  }
+  if(sharkRef){const st=performance.now()*0.001,sk=sharkRef,ud=sk.userData;
+    const dx=gurney.position.x-sk.position.x,dz=gurney.position.z-sk.position.z;
+    sharkDist=Math.hypot(dx,dz);
+    let turnTo=Math.atan2(-dx,-dz)-ud.heading;            // -dx,-dz: model faces -z like the gurney
+    while(turnTo>Math.PI)turnTo-=Math.PI*2; while(turnTo<-Math.PI)turnTo+=Math.PI*2;
+    const rate=1.15*dt;                                    // gurney turns at 2.2 rad/s — you can cut inside it
+    if((ud.stun||0)<=0)ud.heading+=Math.max(-rate,Math.min(rate,turnTo));
+    const swim=(ud.stun||0)>0?24:19;                       // bonked: swims off dazed
+    sk.position.x-=Math.sin(ud.heading)*swim*dt; sk.position.z-=Math.cos(ud.heading)*swim*dt;
+    const sg=groundAt(sk.position.x,sk.position.z,sk.position.y+12);
+    sk.position.y=(sg??0)+2.6+Math.sin(st*1.6)*.5;
+    sk.rotation.y=ud.heading; sk.rotation.z=Math.sin(st*2)*.12;
+    ud.tail.rotation.y=Math.sin(st*7)*.55;
+    if(sharkDist<14)flags.sharkClose=true;
+    ud.cool=Math.max(0,ud.cool-dt);
+    ud.stun=Math.max(0,(ud.stun||0)-dt);
+    // ram it head-on with speed and you bonk it on the nose: it reels off, stunned
+    const fx2=-Math.sin(v.heading), fz2=-Math.cos(v.heading);
+    const facing=sharkDist>0.01?(fx2*-dx+fz2*-dz)/sharkDist:0; // dx,dz runs shark->gurney, so negate to test 'am I driving AT it'
+    if(sharkDist<6&&Math.abs(v.speed)>15&&facing>0.55&&ud.stun<=0){
+      ud.stun=3.5;sharkBonks++;mayhem+=500;
+      shake=Math.min(1.8,shake+0.9);sfxSmash(8);flashToast('🦈 BONK! +500');
+      ud.heading+=Math.PI; // sent reeling the other way
+    }else if(sharkDist<4.4&&ud.cool<=0&&ud.stun<=0){ud.cool=2.5;sharkBites++;
+      shake=Math.min(1.8,shake+1.1);sfxSmash(6);
+      gurney.userData.vy=Math.max(gurney.userData.vy,13);v.speed*=0.5; // scrub speed, never reverse — reversing pins you on the shark
+      flashToast('🦈 CHOMP!');}
+  }
 
   riderRoot.position.copy(gurney.position); riderRoot.rotation.y=v.heading; riderRoot.rotation.x=gurney.rotation.x; // rider tilts with the bed
 
