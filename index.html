@@ -1186,10 +1186,9 @@ function buildSpace(){
   // gantry tower + the elevator platform you drive onto
   for(const[gx,gz] of[[29,-7],[29,7],[15,-7],[15,7]]){const leg=box(.9,46,.9,steel);leg.position.set(gx,23,gz);leg.castShadow=true;world.add(leg);}
   for(let h=8;h<=44;h+=9){const belt=box(15,.5,15,steel);belt.position.set(22,h,0);belt.visible=false;world.add(belt);}
-  elevRef=box(13,.7,13,new THREE.MeshStandardMaterial({color:0xffd02d,metalness:.3,roughness:.6}));
-  elevRef.position.set(22,.35,0);elevRef.castShadow=true;world.add(elevRef);addDrivable(elevRef);
-  elevY=.35;elevState=0;
-  addSlope(22,-13,9,9,.7,0,Math.PI); // roll-on ramp so you can get up onto the platform
+  elevRef=box(13,.4,13,new THREE.MeshStandardMaterial({color:0xffd02d,metalness:.3,roughness:.6}));
+  elevRef.position.set(22,-.2,0);elevRef.castShadow=true;world.add(elevRef);addDrivable(elevRef);
+  elevY=-.2;elevState=0; // top face flush with the ground: drive straight on, zero step, nothing to launch off; it rises when triggered
   // top bridge across to the rocket, plus the boarding pad
   const bridge=box(15,.6,7,steel);bridge.position.set(13.5,44.4,0);bridge.castShadow=true;world.add(bridge);addDrivable(bridge);
   const pad=box(8,.6,8,new THREE.MeshStandardMaterial({color:0x1d3a2a,emissive:0x39ff88,emissiveIntensity:.45}));
@@ -1557,7 +1556,7 @@ function tick(){
       mayhem+=800;shake=Math.min(1.8,shake+1.3);sfxSmash(9);flashToast('\ud83c\udfa2 DERAILED! +800');
     }}
   if(elevRef){ // drive onto the platform and it takes you up the gantry
-    const top=elevY+.35;
+    const top=elevY+.4;
     const onPad=Math.abs(gurney.position.x-22)<6.5&&Math.abs(gurney.position.z)<6.5&&Math.abs(gurney.position.y-top)<2;
     if(elevState===0&&onPad){elevState=1;sfxChime();flashToast('\ud83d\uded7 GOING UP...');}
     if(elevState===1){
