@@ -19,6 +19,9 @@
   #chal b{color:#ffd34d}
   #toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);z-index:11;font-size:22px;font-weight:700;
          color:#5cd6a8;text-shadow:0 2px 6px #000;opacity:0;transition:opacity .3s;pointer-events:none}
+  #pitch{position:fixed;left:50%;top:58%;transform:translateX(-50%);z-index:11;width:160px;text-align:center;opacity:0;transition:opacity .12s;pointer-events:none}
+  #pitch.show{opacity:1}
+  #pitch .phint{font-size:13px;font-weight:800;color:#eaf2ee;text-shadow:0 2px 6px #000;letter-spacing:.5px}
   #timer{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:12;font-size:34px;font-weight:800;
          color:#ffd34d;text-shadow:0 2px 8px #000}
   .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
@@ -64,6 +67,10 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
 </div>
 <div id="chal"></div>
 <div id="toast"></div>
+<div id="pitch"><svg viewBox="0 0 160 84" width="160" height="84">
+  <line id="pGround" x1="26" y1="56" x2="134" y2="56" stroke="#8a7550" stroke-width="5" stroke-linecap="round"/>
+  <line id="pBed" x1="34" y1="40" x2="126" y2="40" stroke="#5cd6a8" stroke-width="8" stroke-linecap="round"/>
+</svg><div class="phint" id="pHint">W / S to level out</div></div>
 <div id="timer"></div>
 <div id="touch">
   <div class="grp"><button data-k="KeyA">◄</button><button data-k="KeyD">►</button></div>
@@ -1250,7 +1257,7 @@ function judgeLanding(impact,gr){
   if(err<0.26&&impact<20){                       // matched the ground, wheels first
     const bonus=Math.round(120+impact*14);
     mayhem+=bonus; condition=Math.min(100,condition+2);
-    comboCount++; comboTimer=3; sfxChime();
+    comboCount++; comboTimer=3; sfxChime(); learnedLand=true;
     flashToast('\u2728 PERFECT LANDING +'+bonus);
   }else if(err<0.7){
     hurt(3+impact*0.35,'Succumbed to injuries');
@@ -1261,6 +1268,21 @@ function judgeLanding(impact,gr){
     shake=Math.min(1.8,shake+0.8); sfxSmash(7);
     flashToast('\ud83d\udca5 CRASH LANDING');
   }}
+function updatePitchGauge(){
+  if(airTime<=0||flatlined){pitchEl.classList.remove('show');return;}
+  pitchEl.classList.add('show');
+  // predict the slope of the ground we're heading for, same sampling the landing judge uses
+  const fx=-Math.sin(v.heading),fz=-Math.cos(v.heading),D=1.8;
+  const below=groundAt(gurney.position.x,gurney.position.z,gurney.position.y+4);
+  const ahead=groundAt(gurney.position.x+fx*D,gurney.position.z+fz*D,gurney.position.y+4);
+  const slope=(below===null||ahead===null)?0:Math.atan((ahead-below)/D);
+  const err=Math.abs(gurney.rotation.x-slope);
+  const col=err<0.26?'#5cd6a8':err<0.7?'#ffd34d':'#ff5a5a';
+  pBed.setAttribute('stroke',col);
+  pBed.setAttribute('transform','rotate('+(-gurney.rotation.x*57.3)+' 80 40)');   // bed tilts with your pitch
+  pGround.setAttribute('transform','rotate('+(-slope*57.3)+' 80 56)');            // ground shows the target angle
+  pHint.style.display=learnedLand?'none':'block';                                 // help retires once you've nailed one
+}
 function checkChallenges(){let changed=false;for(const ch of curChallenges){if(!ch.done&&ch.test()){ch.done=true;mayhem+=300;flashToast('✅ '+ch.label+'  +300');sfxChime();changed=true;}}if(changed)renderChallenges();}
 const FLOPS=['\u26bd OOOF! (never touched him)','\u26bd He\u2019s down! Replay says otherwise','\u26bd Clutching the wrong leg','\u26bd Rolling... still rolling...'];
 const BADCALLS=['\ud83d\udfe8 YELLOW \u2014 for existing','\ud83d\udfe5 RED CARD \u2014 wrong player','\u26a0\ufe0f OFFSIDE (nobody moved)','\ud83d\udcef PENALTY \u2014 unclear why','\u26bd GOAL DISALLOWED \u2014 vibes'];
@@ -1323,6 +1345,8 @@ function flatline(why){ flatlined=true; runActive=false; timerEl.textContent='';
   document.getElementById('endScore').textContent=(why||'Body gave out')+' \u2014 Mayhem: '+mayhem;
   document.getElementById('endBest').textContent=isNew?'\u2605 NEW BEST!':'Best: '+best;
   document.getElementById('end').classList.remove('hidden'); }
+let learnedLand=false;
+const pitchEl=document.getElementById('pitch'),pGround=document.getElementById('pGround'),pBed=document.getElementById('pBed'),pHint=document.getElementById('pHint');
 const speedEl=document.getElementById('speed'),smashEl=document.getElementById('smash'),scoreEl=document.getElementById('score'),comboEl=document.getElementById('combo'),needleEl=document.getElementById('needle');
 
 function stepProps(dt){
@@ -1685,6 +1709,7 @@ function tick(){
   needleEl.setAttribute('transform','rotate('+(-90+Math.min(1,kmh/200)*180)+' 60 60)');
   scoreEl.textContent=mayhem;
   comboEl.textContent=comboCount>1?('x'+(1+Math.min(comboCount-1,20)*0.2).toFixed(1)):'';
+  updatePitchGauge();
   // pickups: oxygen restores condition; defib revives you during a CODE BLUE
   for(const pk of pickups){ if(!pk.g.visible)continue;
     pk.g.rotation.y+=dt*1.6; pk.g.position.y=(groundAt(pk.x,pk.z,80)??0)+Math.sin(performance.now()*0.003+pk.x)*0.25+0.2;
