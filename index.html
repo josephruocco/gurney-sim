@@ -88,6 +88,7 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
+<div id="cleared" class="overlay hidden"><div><h2 style="color:#ffd34d">ALL CHALLENGES COMPLETE!</h2><p id="clearedSub"></p><div class="menurow"><button id="nextLevelBtn">▶ Next Level</button><button id="keepPlayingBtn" style="background:#2b3340">Keep Playing</button></div></div></div>
 <div id="ui">
   <div class="row">
     <button data-lvl="garage" class="on">Garage</button>
@@ -1226,6 +1227,16 @@ function buildSpace(){
 
 const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagara,pyramids:buildPyramids,gym:buildGym,farm:buildFarm,vegas:buildVegas,ocean:buildOcean,xp:buildXP,highway:buildHighway,ohio:buildOhio,stadium:buildStadium,trampoline:buildTrampoline,minefield:buildMinefield,skatepark:buildSkatepark,coaster:buildCoaster,hospital:buildHospital,space:buildSpace};
 const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio',stadium:'Soccer Stadium',trampoline:'Trampoline Park',minefield:'Minefield',skatepark:'Skate Park',coaster:'Coaster Park',hospital:'St. Mercy General',space:'Cape Gurney'};
+// difficulty 1..4 per world; the progression only ever ramps up
+const DIFF={park:1,niagara:1,xp:1,garage:2,lot:2,pyramids:2,gym:2,farm:2,stadium:2,hospital:2,minefield:2,vegas:3,ocean:3,highway:3,ohio:3,trampoline:3,space:3,skatepark:4,coaster:4};
+const PROGRESSION=Object.keys(LEVELS).slice().sort((a,b)=>(DIFF[a]||2)-(DIFF[b]||2)||Object.keys(LEVELS).indexOf(a)-Object.keys(LEVELS).indexOf(b));
+let levelCleared=false;
+function showCleared(){paused=true;mayhem+=500;
+  const i=PROGRESSION.indexOf(current),nx=PROGRESSION[(i+1)%PROGRESSION.length];
+  document.getElementById('clearedSub').textContent='+500 clearance bonus \u2014 next up: '+LOC[nx]+'  '+'\u2605'.repeat(DIFF[nx]||2);
+  document.getElementById('end').classList.add('hidden');document.getElementById('cleared').classList.remove('hidden');sfxChime();}
+function gotoNextLevel(){document.getElementById('cleared').classList.add('hidden');
+  const i=PROGRESSION.indexOf(current);loadLevel(PROGRESSION[(i+1)%PROGRESSION.length]);startGame();}
 // ---------- sandbox: mayhem score + per-level challenges ----------
 let counts={}, flags={}, curChallenges=[];
 const c=(t,n)=>(counts[t]||0)>=n;
@@ -1252,7 +1263,7 @@ const CHALLENGES={
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
   curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
-function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
+function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;levelCleared=false;document.getElementById('cleared').classList.add('hidden');document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
 function judgeLanding(impact,gr){
   if(!wasAir||flatlined)return; wasAir=false; pitchVel=0; flipAccum=0;
   // how close was the gurney's pitch to the slope it actually hit?
@@ -1289,7 +1300,8 @@ function updatePitchGauge(){
   pGround.setAttribute('transform','rotate('+(-slope*57.3)+' 80 56)');            // ground shows the target angle
   pHint.style.display=learnedLand?'none':'block';                                 // help retires once you've nailed one
 }
-function checkChallenges(){let changed=false;for(const ch of curChallenges){if(!ch.done&&ch.test()){ch.done=true;mayhem+=300;flashToast('✅ '+ch.label+'  +300');sfxChime();changed=true;}}if(changed)renderChallenges();}
+function checkChallenges(){let changed=false;for(const ch of curChallenges){if(!ch.done&&ch.test()){ch.done=true;mayhem+=300;flashToast('✅ '+ch.label+'  +300');sfxChime();changed=true;}}if(changed){renderChallenges();
+  if(!levelCleared&&curChallenges.length&&curChallenges.every(c=>c.done)){levelCleared=true;showCleared();}}}
 const FLOPS=['\u26bd OOOF! (never touched him)','\u26bd He\u2019s down! Replay says otherwise','\u26bd Clutching the wrong leg','\u26bd Rolling... still rolling...'];
 const BADCALLS=['\ud83d\udfe8 YELLOW \u2014 for existing','\ud83d\udfe5 RED CARD \u2014 wrong player','\u26a0\ufe0f OFFSIDE (nobody moved)','\ud83d\udcef PENALTY \u2014 unclear why','\u26bd GOAL DISALLOWED \u2014 vibes'];
 let toastT=0;function flashToast(t){const el=document.getElementById('toast');el.textContent=t;el.style.opacity=1;toastT=2.4;}
@@ -1801,7 +1813,7 @@ function endRun(){runActive=false;timerEl.textContent='';const best=+(localStora
 // ---------- pause + title ----------
 let paused=false, gameStarted=false;
 function togglePause(){if(!gameStarted)return;paused=!paused;document.getElementById('pause').classList.toggle('hidden',!paused);}
-function startGame(){gameStarted=true;paused=false;initAudio();if(AC)AC.resume();
+function startGame(){gameStarted=true;paused=false;initAudio();if(AC)AC.resume();document.getElementById('end').classList.add('hidden');
   document.getElementById('title').classList.add('hidden');document.getElementById('pause').classList.add('hidden');}
 function openMenu(){gameStarted=false;paused=false;
   document.getElementById('pause').classList.add('hidden');document.getElementById('end').classList.add('hidden');
@@ -1810,14 +1822,17 @@ document.getElementById('playBtn').onclick=startGame;
 document.getElementById('menuBtn').onclick=openMenu;
 // build the level picker on the menu from the level list itself, so new levels show up automatically
 const menuGrid=document.getElementById('menuLevels');
-for(const key of Object.keys(LEVELS)){
-  const b=document.createElement('button');b.textContent=LOC[key];
+for(const key of PROGRESSION){                                    // menu doubles as a difficulty ladder, easy -> hard
+  const b=document.createElement('button');const d=DIFF[key]||2;
+  b.innerHTML=LOC[key]+'<br><span style="font-size:11px;letter-spacing:2px;color:#ffd34d">'+'\u25cf'.repeat(d)+'<span style="color:#3d4a5c">'+'\u25cf'.repeat(4-d)+'</span></span>';
   b.onclick=()=>{loadLevel(key);startGame();};
   menuGrid.appendChild(b);
 }
 function randomLevel(){const ks=Object.keys(LEVELS);loadLevel(ks[(Math.random()*ks.length)|0]);}
 document.getElementById('randomBtn').onclick=()=>{randomLevel();startGame();};
 document.getElementById('diceBtn').onclick=randomLevel;
+document.getElementById('nextLevelBtn').onclick=gotoNextLevel;
+document.getElementById('keepPlayingBtn').onclick=()=>{document.getElementById('cleared').classList.add('hidden');paused=false;};
 document.getElementById('resumeBtn').onclick=togglePause;
 document.getElementById('runBtn').onclick=startRun;
 document.getElementById('againBtn').onclick=()=>{document.getElementById('end').classList.add('hidden');startRun();};
