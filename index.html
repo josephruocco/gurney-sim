@@ -260,7 +260,7 @@ const scuba=scubaMask();scuba.visible=false;
 const riderRoot=new THREE.Group(); const supine=buildSupine(),surfer=buildSurfer();
 supine.add(scuba); scuba.position.set(0,1.45,-1); // sits on the supine patient's face
 riderRoot.add(supine,surfer); riderRoot.rotation.order='YXZ'; scene.add(riderRoot);
-let riderMode='supine';
+let riderMode='supine'; let mirrorGaze=0, mirrorHinted=false;
 function applyRider(){supine.visible=riderMode==='supine';surfer.visible=riderMode==='surfer';
   if(typeof scuba!=='undefined')scuba.visible=(typeof current!=='undefined'&&current==='ocean'&&riderMode==='supine');
   document.getElementById('rider').textContent=riderMode==='supine'?'Supine patient':'Surfer';}
@@ -1246,7 +1246,7 @@ const CHALLENGES={
   park:[['Mow down 6 Canadians',()=>c('canadian',6)],['Send 2 strollers flying',()=>c('strollerLady',2)],['Smash 6 trash cans',()=>c('trashCan',6)]],
   niagara:[['Go over the falls',()=>flags.falls],['Roll 4 barrels',()=>c('barrel',4)],['Catch big air',()=>flags.air]],
   pyramids:[['Scale a pyramid',()=>gurney.position.y>7],['Stampede 6 camels',()=>c('camel',6)],['Smash 6 cones',()=>c('trafficCone',6)]],
-  gym:[['Bench press: smash 4 benches',()=>c('weightBench',4)],['Hit your macros (smash 5 protein tubs)',()=>c('proteinTub',5)],['Photobomb 6 gym-goers',()=>c('gymGoer',6)]],
+  gym:[['Bench press: smash 4 benches',()=>c('weightBench',4)],['Hit your macros (smash 5 protein tubs)',()=>c('proteinTub',5)],['Photobomb 6 gym-goers',()=>c('gymGoer',6)],['Admire yourself in the mirror (stand up, R)',()=>flags.admired]],
   farm:[['Tip 6 cows',()=>c('cow',6)],['Burn down the barn',()=>!!(barnRef&&barnRef.userData.onFire)],['Topple 3 power poles',()=>c('powerPole',3)]],
   vegas:[['Drive over the Sphere',()=>flags.sphere],['Smash 10 cones',()=>c('trafficCone',10)],['Topple 3 power poles',()=>c('powerPole',3)]],
   ocean:[['Find the lost submersible',()=>flags.foundSub],['Bonk the shark on the nose',()=>sharkBonks>0],['Grab an oxygen tank',()=>flags.gotO2]],
@@ -1263,7 +1263,7 @@ const CHALLENGES={
 };
 function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
   curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
-function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;runElapsed=0;runDamage=0;levelCleared=false;document.getElementById('cleared').classList.add('hidden');timerEl.textContent='';document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
+function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;runElapsed=0;runDamage=0;mirrorGaze=0;mirrorHinted=false;levelCleared=false;document.getElementById('cleared').classList.add('hidden');timerEl.textContent='';document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
 function judgeLanding(impact,gr){
   if(!wasAir||flatlined)return; wasAir=false; pitchVel=0; flipAccum=0;
   // how close was the gurney's pitch to the slope it actually hit?
@@ -1680,6 +1680,14 @@ function tick(){
   if(babyT>=0&&!babyReveal){ // ...and then the paternity results come in
     babyT+=dt;
     if(babyT>2.4){babyReveal=true;flags.notTheFather=true;sfxSmash(3);flashToast('\ud83e\uddec YOU ARE NOT THE FATHER');}
+  }
+  if(current==='gym'){ // stand up (R) at a mirror and admire yourself a little too long
+    const nearMirror=(58-Math.max(Math.abs(gurney.position.x),Math.abs(gurney.position.z)))<15;
+    if(riderMode==='surfer'&&Math.abs(v.speed)<3&&nearMirror){
+      mirrorGaze+=dt;
+      if(mirrorGaze>0.6&&!mirrorHinted&&!flags.admired){mirrorHinted=true;flashToast('\ud83e\ude9e Lookin\u2019 good... hold that pose');}
+      if(mirrorGaze>3&&!flags.admired){flags.admired=true;mayhem+=300;sfxChime();flashToast('\ud83d\udcaa ADMIRED YOURSELF FOR TOO LONG! +300');}
+    } else mirrorGaze=Math.max(0,mirrorGaze-dt*2);
   }
   if(current==='lot'&&rivalRef){ // supermarket: race a rival to the free bay, and park like a menace
     const ud=rivalRef.userData;
