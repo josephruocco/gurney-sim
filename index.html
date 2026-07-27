@@ -1231,7 +1231,7 @@ function showCleared(){paused=true;mayhem+=500;
     '<div style="font-size:15px;line-height:1.8;text-align:left;display:inline-block">'+
       '\u2705 All challenges<br>'+
       (clean?'\u2705 Minimal injuries':'\u274c Minimal injuries <span style=opacity:.6>(took '+Math.round(runDamage)+' dmg)</span>')+'<br>'+
-      (fast?'\u2705 Under 90s':'\u274c Under 90s')+' <span style=opacity:.6>(cleared in '+runElapsed.toFixed(1)+'s)</span>'+
+      (fast?'\u2705 Under 90s':'\u274c Under 90s')+' <span style=opacity:.6>(cleared in '+fmtTime(runElapsed)+')</span>'+
     '</div>'+
     '<div style="opacity:.65;margin-top:10px">Next up: '+LOC[nx]+' \u2014 <b style=color:'+dl[1]+'>'+dl[0]+'</b></div>';
   document.getElementById('end').classList.add('hidden');document.getElementById('cleared').classList.remove('hidden');sfxChime();}
@@ -1761,7 +1761,7 @@ function tick(){
   if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake*.6;camera.position.z+=(Math.random()-.5)*shake;shake=Math.max(0,shake-dt*4);}
 
   updateParticles(dt);
-  if(!flatlined&&!levelCleared){runElapsed+=dt;timerEl.textContent='\u23f1 '+runElapsed.toFixed(1)+'s';}
+  if(!flatlined&&!levelCleared){runElapsed+=dt;timerEl.textContent='\u23f1 '+fmtTime(runElapsed);}
 
   if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0)comboCount=0;}
   checkChallenges();
@@ -1813,6 +1813,7 @@ function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=part
 
 // ---------- timed run + high score ----------
 let runActive=false, runTime=0, runElapsed=0, runDamage=0; const timerEl=document.getElementById('timer');
+function fmtTime(t){const m=Math.floor(t/60),sec=t-m*60;return m+':'+(sec<10?'0':'')+sec.toFixed(1);}
 function startRun(){document.getElementById('end').classList.add('hidden');loadLevel(current);startGame();} // Retry: fresh attempt at the current level
 function endRun(){runActive=false;timerEl.textContent='';const best=+(localStorage.getItem('gurney_best')||0),isNew=mayhem>best;
   if(isNew)localStorage.setItem('gurney_best',mayhem);
