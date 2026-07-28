@@ -19,6 +19,11 @@
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:var(--mono);color:var(--text);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
   .panel-h{font-size:9.5px;letter-spacing:2.5px;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:7px;text-transform:uppercase}
   .panel-h::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--telem);box-shadow:0 0 8px var(--telem);flex:none}
+  .panel-h{cursor:pointer;user-select:none}
+  .panel-h::after{content:'\25be';margin-left:auto;font-size:9px;opacity:.55}
+  .min .panel-h::after{content:'\25b8'}
+  #hud.min .prow{display:none}
+  #vitals.min .prow,#vitals.min #ecg{display:none}
   .prow{display:flex;justify-content:space-between;align-items:baseline;gap:16px;font-size:12px;line-height:1.85}
   .plab{color:var(--muted);font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;flex:none}
   .pval{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
@@ -326,7 +331,7 @@ riderRoot.add(supine,surfer); riderRoot.rotation.order='YXZ'; scene.add(riderRoo
 let riderMode='supine'; let mirrorGaze=0, mirrorHinted=false;
 const CHARS=[
   {id:'florida',name:'Florida Man', emoji:'\ud83d\udc0a', flavor:'Wrestled a gator. Felt nothing.',           risk:'NORMAL',  frag:1.0,  skin:0xe8c39e, hair:0xd8b048},
-  {id:'granny', name:'Granny',      emoji:'\ud83d\udc75', flavor:'89 years young. Bones like chalk.',        risk:'EXTREME', frag:1.8,  skin:0xf0dccb, hair:0xe6e6e6},
+  {id:'geezer', name:'Geezer',      emoji:'\ud83d\udc74', flavor:'89 years young. Bones like chalk.',        risk:'EXTREME', frag:1.8,  skin:0xf0dccb, hair:0xe6e6e6},
   {id:'alien',  name:'The Visitor', emoji:'\ud83d\udc7d', flavor:'Crash-landed. Anatomy unclear.',           risk:'LOW',     frag:0.6,  skin:0x8fd88f, hair:0x2f5a34},
   {id:'dummy',  name:'Crash Dummy', emoji:'\ud83d\udea7', flavor:'Literally built for this.',                risk:'MINIMAL', frag:0.4,  skin:0xf0c020, hair:0x2a2a2a},
 ];
@@ -1336,8 +1341,14 @@ const CHALLENGES={
   space:[['Ride the elevator up',()=>flags.elevTop],['Board the rocket',()=>flags.boarded],['Discover the Earth is flat',()=>flags.flatEarth]],
   hospital:[['Deliver the baby',()=>flags.babyDelivered],['Learn the truth',()=>flags.notTheFather],['Total 8 wheelchairs',()=>c('wheelchair',8)],['Escape through the exit',()=>gurney.position.z>70&&Math.abs(gurney.position.x)<9]],
 };
-function renderChallenges(){document.getElementById('chal').innerHTML='<div class="panel-h">Objectives</div>'+
-  curChallenges.map(ch=>'<div class="obj'+(ch.done?' done':'')+'"><span class="box"></span><span>'+ch.label+'</span></div>').join('');}
+let chalMin=false;
+function objRow(ch){return '<div class="obj'+(ch.done?' done':'')+'"><span class="box"></span><span>'+ch.label+'</span></div>';}
+function renderChallenges(){const el=document.getElementById('chal');
+  if(chalMin){const next=curChallenges.find(c=>!c.done);
+    el.innerHTML='<div class="panel-h">Objectives</div>'+(next?objRow(next):'<div class="obj done"><span class="box"></span><span>All clear</span></div>');
+  }else{
+    el.innerHTML='<div class="panel-h">Objectives</div>'+curChallenges.map(objRow).join('');
+  }}
 function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;runElapsed=0;runDamage=0;mirrorGaze=0;mirrorHinted=false;levelCleared=false;document.getElementById('cleared').classList.add('hidden');timerEl.textContent='';document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
 function judgeLanding(impact,gr){
   if(!wasAir||flatlined)return; wasAir=false; pitchVel=0; flipAccum=0;
@@ -1923,6 +1934,10 @@ document.getElementById('admitBtn').onclick=()=>{
 document.getElementById('newPatientBtn').onclick=()=>{
   document.getElementById('title').classList.add('hidden');
   document.getElementById('intake').classList.remove('hidden');};
+// collapsible HUD panels: click a header to minimise
+document.querySelector('#hud .panel-h').onclick=()=>document.getElementById('hud').classList.toggle('min');
+document.querySelector('#vitals .panel-h').onclick=()=>document.getElementById('vitals').classList.toggle('min');
+document.getElementById('chal').addEventListener('click',()=>{const el=document.getElementById('chal');el.classList.toggle('min');chalMin=el.classList.contains('min');renderChallenges();});
 document.getElementById('menuBtn').onclick=openMenu;
 // build the level picker on the menu from the level list itself, so new levels show up automatically
 const menuGrid=document.getElementById('menuLevels');
