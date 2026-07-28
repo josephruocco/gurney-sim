@@ -5,67 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gurney Simulator</title>
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#0b0e14;font-family:system-ui,sans-serif;color:#e6e6e6}
-  #hud{position:fixed;top:12px;left:12px;z-index:10;font-size:14px;line-height:1.5;
-       background:rgba(0,0,0,.45);padding:10px 14px;border-radius:8px;pointer-events:none}
-  #hud b{color:#5cd6a8}
-  #ui{position:fixed;top:12px;right:12px;z-index:10;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-  #ui .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:320px}
-  button{font:inherit;font-size:13px;padding:7px 11px;border:0;border-radius:7px;cursor:pointer;background:#2b3340;color:#dfe6ee}
-  button.on{background:#2e6cf0;color:#fff}
-  #help{position:fixed;bottom:12px;left:12px;z-index:10;font-size:12px;opacity:.6}
-  #chal{position:fixed;bottom:44px;left:12px;z-index:10;font-size:12px;line-height:1.65;
-        background:rgba(0,0,0,.5);padding:8px 12px;border-radius:8px;max-width:240px}
-  #chal b{color:#ffd34d}
-  #toast{position:fixed;top:78px;left:50%;transform:translateX(-50%);z-index:11;font-size:22px;font-weight:700;
-         color:#5cd6a8;text-shadow:0 2px 6px #000;opacity:0;transition:opacity .3s;pointer-events:none}
-  #pitch{position:fixed;left:50%;top:58%;transform:translateX(-50%);z-index:11;width:160px;text-align:center;opacity:0;transition:opacity .12s;pointer-events:none}
+  :root{
+    --telem:#5cd6a8; --amber:#ffd34d; --red:#ff5a5a;
+    --text:#dfeee8; --muted:#5f8a7b;
+    --panel:rgba(9,17,20,.80); --line:rgba(92,214,168,.20); --r:11px;
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#060a0e;font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased}
+  canvas{display:block}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:9;box-shadow:inset 0 0 200px rgba(0,0,0,.5);background:radial-gradient(120% 120% at 50% 40%,transparent 60%,rgba(0,0,0,.28))}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:var(--mono);color:var(--text);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
+  .panel-h{font-size:9.5px;letter-spacing:2.5px;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:7px;text-transform:uppercase}
+  .panel-h::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--telem);box-shadow:0 0 8px var(--telem);flex:none}
+  .prow{display:flex;justify-content:space-between;align-items:baseline;gap:16px;font-size:12px;line-height:1.85}
+  .plab{color:var(--muted);font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;flex:none}
+  .pval{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .pval.accent{color:var(--telem)}
+  .unit{color:var(--muted);font-size:9.5px;margin-left:1px}
+  .mult{color:var(--amber);font-weight:700;font-size:12px}
+  #hud{position:fixed;top:14px;left:14px;z-index:10;width:214px}
+  #speedoSvg{width:98px;display:block;margin:5px auto 3px}
+  #leftstack{position:fixed;left:14px;bottom:14px;z-index:10;display:flex;flex-direction:column;gap:10px;width:238px}
+  .obj{display:flex;align-items:flex-start;gap:8px;font-size:11.5px;line-height:1.5;color:var(--muted);padding:1.5px 0}
+  .obj .box{flex:none;width:13px;height:13px;border:1.5px solid var(--muted);border-radius:3px;margin-top:1px}
+  .obj.done{color:var(--text)}
+  .obj.done .box{background:var(--telem);border-color:var(--telem);box-shadow:0 0 8px rgba(92,214,168,.4)}
+  .obj.done .box::after{content:'✓';color:#04120c;font-size:10px;font-weight:900;display:block;text-align:center;line-height:11px}
+  #vitals #ecg{display:block;width:100%;height:38px;margin:5px 0}
+  #vStatus{text-align:center;font-size:12px;font-weight:800;letter-spacing:2px;padding:4px 0;border-radius:5px;font-family:var(--mono)}
+  button{font-family:var(--mono);font-size:11.5px;letter-spacing:.4px;font-weight:600;padding:8px 12px;border:1px solid rgba(255,255,255,.09);border-radius:8px;cursor:pointer;background:rgba(18,28,32,.82);color:var(--text);transition:background .12s,border-color .12s,transform .06s;backdrop-filter:blur(6px);white-space:nowrap}
+  button:hover{background:rgba(34,50,55,.92);border-color:var(--line)}
+  button:active{transform:translateY(1px)}
+  button.on{background:var(--telem);color:#04120c;border-color:var(--telem)}
+  #ui{position:fixed;top:14px;right:14px;z-index:10;display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+  #ui .row{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;max-width:340px}
+  #menuBtn{background:rgba(74,58,92,.85);color:#e8d8ff;border-color:rgba(185,140,255,.3)}
+  #timer{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:12;font-family:var(--mono);font-size:28px;font-weight:800;color:var(--amber);letter-spacing:1px;text-shadow:0 0 18px rgba(255,211,77,.35),0 2px 8px #000}
+  #toast{position:fixed;top:84px;left:50%;transform:translateX(-50%);z-index:11;font-family:var(--sans);font-size:22px;font-weight:800;letter-spacing:.5px;color:var(--telem);text-shadow:0 2px 10px #000,0 0 20px rgba(92,214,168,.3);opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
+  #pitch{position:fixed;left:50%;top:56%;transform:translateX(-50%);z-index:11;width:170px;text-align:center;opacity:0;transition:opacity .12s;pointer-events:none}
   #pitch.show{opacity:1}
-  #pitch .phint{font-size:13px;font-weight:800;color:#eaf2ee;text-shadow:0 2px 6px #000;letter-spacing:.5px}
-  #timer{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:12;font-size:34px;font-weight:800;
-         color:#ffd34d;text-shadow:0 2px 8px #000}
-  .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
-           background:rgba(6,8,14,.85);text-align:center}
+  #pitch .phint{font-family:var(--mono);font-size:12px;font-weight:700;color:#eaf2ee;letter-spacing:.5px;text-shadow:0 2px 6px #000}
+  #help{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;color:var(--muted);opacity:.7;text-align:center;pointer-events:none}
+  .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 120% at 50% 35%,rgba(8,16,20,.82),rgba(3,6,9,.95));backdrop-filter:blur(5px);text-align:center;padding:20px}
   .overlay.hidden{display:none}
-  .overlay>div{display:flex;flex-direction:column;align-items:center;padding:20px}
-  .overlay h1{font-size:66px;margin:0;letter-spacing:6px;color:#5cd6a8}
-  .overlay h2{font-size:40px;margin:0 0 6px;color:#5cd6a8}
-  .overlay p{opacity:.85;margin:6px 0;font-size:17px}
-  .overlay .ctrl{font-size:12px;opacity:.55;max-width:560px}
-  .overlay button{margin-top:18px;font-size:20px;font-weight:700;padding:13px 30px;border:0;border-radius:10px;
-                  background:#2e6cf0;color:#fff;cursor:pointer}
-  #vitals{position:fixed;left:12px;bottom:210px;z-index:10;width:238px;background:rgba(4,10,8,.82);
-          border:1px solid #1d3a2a;border-radius:9px;padding:8px 10px 6px;font-family:ui-monospace,Menlo,monospace}
-  #vitals .vt{font-size:10px;letter-spacing:1.5px;color:#4a7a66;margin-bottom:3px}
-  #vitals .vrow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;line-height:1.5}
-  #vitals .vlab{color:#5a8a76;font-size:11px}
-  #vitals .vval{font-weight:700}
-  #ecg{display:block;width:216px;height:40px;margin:3px 0 4px}
-  #vStatus{text-align:center;font-size:13px;font-weight:700;letter-spacing:1.5px;padding:3px 0;border-radius:5px}
-  #menuLevels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;max-width:700px;margin:16px 0 4px}
-  #menuLevels button{margin:0;font-size:13px;font-weight:600;padding:10px 6px;border-radius:8px;background:#2b3340;color:#dfe6ee}
-  #menuLevels button:hover{background:#3d4a5c}
-  .menurow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center}
-  #randomBtn{background:#7a4ea0}
-  #menuBtn{background:#4a3a5c;color:#e8d8ff}
-  #touch{position:fixed;bottom:16px;left:0;right:0;z-index:15;display:none;justify-content:space-between;padding:0 20px;pointer-events:none}
+  .overlay>div{display:flex;flex-direction:column;align-items:center;max-width:760px}
+  .overlay h1{font-family:var(--sans);font-size:82px;font-weight:900;letter-spacing:14px;margin:0;color:var(--telem);text-shadow:0 0 40px rgba(92,214,168,.35),0 6px 16px #000;padding-left:14px}
+  .overlay .sub{font-family:var(--mono);font-size:12px;letter-spacing:5px;color:var(--muted);text-transform:uppercase;margin:0 0 2px}
+  .overlay h2{font-family:var(--sans);font-size:40px;font-weight:800;margin:0 0 6px;color:var(--telem)}
+  .overlay p{opacity:.85;margin:8px 0;font-size:16px;font-family:var(--sans)}
+  .overlay .ctrl{font-family:var(--mono);font-size:11px;opacity:.5;max-width:640px;line-height:1.7;letter-spacing:.3px}
+  .overlay button{font-family:var(--sans);margin-top:4px;font-size:17px;font-weight:800;letter-spacing:.5px;padding:13px 30px;border-radius:10px}
+  #playBtn{background:var(--telem);color:#04120c;border-color:var(--telem);box-shadow:0 0 24px rgba(92,214,168,.3)}
+  #playBtn:hover{background:#6ee7b7}
+  #randomBtn{background:rgba(74,58,92,.85);color:#e8d8ff;border-color:rgba(185,140,255,.3)}
+  #menuLevels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;max-width:720px;margin:18px 0 6px}
+  #menuLevels button{margin:0;font-family:var(--sans);font-size:12.5px;font-weight:700;padding:11px 6px;border-radius:9px;background:rgba(18,28,32,.8);line-height:1.25;text-align:center}
+  #menuLevels button:hover{background:rgba(40,56,62,.95);border-color:var(--line)}
+  .menurow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:6px}
+  #touch{position:fixed;bottom:18px;left:0;right:0;z-index:15;display:none;justify-content:space-between;padding:0 22px;pointer-events:none}
   #touch .grp{display:flex;gap:12px;pointer-events:auto}
-  #touch button{width:66px;height:66px;font-size:26px;border-radius:50%;border:0;background:rgba(43,51,64,.82);color:#fff}
+  #touch button{width:66px;height:66px;font-size:24px;border-radius:50%}
 </style>
 </head>
 <body>
-<div id="hud">Location: <b id="loc">Parking Garage</b><br>Rider: <b id="rider">Supine patient</b><br>Speed: <b id="speed">0</b> km/h
-<svg id="speedoSvg" viewBox="0 0 120 66" style="width:90px;display:block;margin:2px 0 4px"><path d="M10,60 A50,50 0 0 1 110,60" fill="none" stroke="#2b3340" stroke-width="7" stroke-linecap="round"/><line id="needle" x1="60" y1="60" x2="60" y2="16" stroke="#ffd34d" stroke-width="3" stroke-linecap="round" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="3.5" fill="#ffd34d"/></svg>
-Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" style="color:#ff9f43;font-weight:700"></span></div>
-<div id="vitals">
-  <div class="vt">PATIENT MONITOR</div>
-  <div class="vrow"><span class="vlab">HR</span><span><span class="vval" id="vHR" style="color:#5cd6a8">72</span> <span class="vlab">bpm</span></span></div>
-  <div class="vrow"><span class="vlab">BP</span><span><span class="vval" id="vBP" style="color:#5cd6a8">120/80</span></span></div>
-  <div class="vrow"><span class="vlab">SpO₂</span><span><span class="vval" id="vO2" style="color:#5cd6a8">99</span> <span class="vlab">%</span></span></div>
-  <canvas id="ecg" width="432" height="80"></canvas>
-  <div id="vStatus">STABLE</div>
+<div id="vignette"></div>
+<div id="hud" class="panel">
+  <div class="panel-h">Telemetry</div>
+  <div class="prow"><span class="plab">Location</span><b class="pval" id="loc">Parking Garage</b></div>
+  <div class="prow"><span class="plab">Patient</span><b class="pval" id="rider">Supine patient</b></div>
+  <div class="prow"><span class="plab">Speed</span><span><b class="pval" id="speed">0</b> <span class="unit">km/h</span></span></div>
+  <svg id="speedoSvg" viewBox="0 0 120 66"><path d="M10,60 A50,50 0 0 1 110,60" fill="none" stroke="rgba(92,214,168,.18)" stroke-width="7" stroke-linecap="round"/><line id="needle" x1="60" y1="60" x2="60" y2="16" stroke="#ffd34d" stroke-width="3" stroke-linecap="round" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="3.5" fill="#ffd34d"/></svg>
+  <div class="prow"><span class="plab">Smashed</span><b class="pval" id="smash">0</b></div>
+  <div class="prow"><span class="plab">Mayhem</span><span><b class="pval accent" id="score">0</b> <span class="mult" id="combo"></span></span></div>
 </div>
-<div id="chal"></div>
+<div id="leftstack">
+  <div id="chal" class="panel"></div>
+  <div id="vitals" class="panel">
+    <div class="panel-h">Patient Monitor</div>
+    <div class="prow"><span class="plab">HR</span><span><b class="pval" id="vHR">72</b> <span class="unit">bpm</span></span></div>
+    <div class="prow"><span class="plab">BP</span><b class="pval" id="vBP">120/80</b></div>
+    <div class="prow"><span class="plab">SpO&#8322;</span><span><b class="pval" id="vO2">99</b> <span class="unit">%</span></span></div>
+    <canvas id="ecg" width="432" height="80"></canvas>
+    <div id="vStatus">STABLE</div>
+  </div>
+</div>
 <div id="toast"></div>
 <div id="pitch"><svg viewBox="0 0 160 84" width="160" height="84">
   <line id="pGround" x1="26" y1="56" x2="134" y2="56" stroke="#8a7550" stroke-width="5" stroke-linecap="round"/>
@@ -77,14 +102,15 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
   <div class="grp"><button data-k="Space">■</button><button data-k="ShiftLeft">≫</button><button data-k="KeyW">▲</button></div>
 </div>
 <div id="title" class="overlay"><div>
+  <div class="sub">Runaway Patient Simulator</div>
   <h1>GURNEY</h1>
-  <p>Wreak havoc on a runaway hospital gurney. Pick a world:</p>
+  <p>Nineteen worlds. One hospital bed. Zero survival instinct.</p>
   <div id="menuLevels"></div>
   <div class="menurow">
-    <button id="randomBtn">🎲 Random Level</button>
+    <button id="randomBtn">🎲 Random</button>
     <button id="playBtn">▶ PLAY</button>
   </div>
-  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · in the air W/S tilt the gurney — land level to stay alive · R rider · F spin · M mods · K mute · Esc pause</p>
+  <p class="ctrl">W/S drive · A/D steer · Space brake · Shift boost · in the air, W/S tilt the gurney, land level to survive · R rider · F spin · M mods · K mute · Esc pause</p>
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
@@ -100,7 +126,7 @@ Smashed: <b id="smash">0</b><br>Mayhem: <b id="score">0</b> <span id="combo" sty
     <button id="menuBtn">☰ Menu</button>
   </div>
 </div>
-<div id="help">W/S accel · A/D steer · Space brake · Shift boost · IN AIR: W/S tilt to land flat · 1-0 location · R rider · F spin · M mods · K mute · yellow ramps = air · green pads = speed</div>
+<div id="help">W/S drive · A/D steer · Space brake · Shift boost · in air: W/S to land level · Esc menu</div>
 
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -1261,8 +1287,8 @@ const CHALLENGES={
   space:[['Ride the elevator up',()=>flags.elevTop],['Board the rocket',()=>flags.boarded],['Discover the Earth is flat',()=>flags.flatEarth]],
   hospital:[['Deliver the baby',()=>flags.babyDelivered],['Learn the truth',()=>flags.notTheFather],['Total 8 wheelchairs',()=>c('wheelchair',8)],['Escape through the exit',()=>gurney.position.z>70&&Math.abs(gurney.position.x)<9]],
 };
-function renderChallenges(){document.getElementById('chal').innerHTML='<b>Challenges</b><br>'+
-  curChallenges.map(ch=>(ch.done?'✅ ':'⬜ ')+ch.label).join('<br>');}
+function renderChallenges(){document.getElementById('chal').innerHTML='<div class="panel-h">Objectives</div>'+
+  curChallenges.map(ch=>'<div class="obj'+(ch.done?' done':'')+'"><span class="box"></span><span>'+ch.label+'</span></div>').join('');}
 function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;runElapsed=0;runDamage=0;mirrorGaze=0;mirrorHinted=false;levelCleared=false;document.getElementById('cleared').classList.add('hidden');timerEl.textContent='';document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
 function judgeLanding(impact,gr){
   if(!wasAir||flatlined)return; wasAir=false; pitchVel=0; flipAccum=0;
