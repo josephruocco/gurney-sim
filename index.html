@@ -67,6 +67,19 @@
   #touch{position:fixed;bottom:18px;left:0;right:0;z-index:15;display:none;justify-content:space-between;padding:0 22px;pointer-events:none}
   #touch .grp{display:flex;gap:12px;pointer-events:auto}
   #touch button{width:66px;height:66px;font-size:24px;border-radius:50%}
+  #intake .form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px 30px;max-width:660px;backdrop-filter:blur(10px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #intake .formh{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+  #intake .formlab{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;text-align:left;margin:0 0 7px}
+  #nameField{font-family:var(--mono);font-size:15px;padding:11px 14px;width:100%;border-radius:8px;border:1px solid var(--line);background:rgba(4,10,8,.6);color:var(--text);margin-bottom:20px}
+  #nameField:focus{outline:none;border-color:var(--telem);box-shadow:0 0 14px rgba(92,214,168,.2)}
+  #charGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+  .charcard{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 8px;background:rgba(18,28,32,.6);transition:all .12s;text-align:center}
+  .charcard:hover{background:rgba(34,50,55,.85)}
+  .charcard.sel{border-color:var(--telem);background:rgba(92,214,168,.12);box-shadow:0 0 20px rgba(92,214,168,.22)}
+  .charcard .emoji{font-size:40px;line-height:1}
+  .charcard .cname{font-family:var(--sans);font-weight:800;font-size:14px;margin:7px 0 4px}
+  .charcard .cflavor{font-family:var(--mono);font-size:9.5px;color:var(--muted);line-height:1.45;min-height:40px}
+  .charcard .crisk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.8px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -101,12 +114,25 @@
   <div class="grp"><button data-k="KeyA">◄</button><button data-k="KeyD">►</button></div>
   <div class="grp"><button data-k="Space">■</button><button data-k="ShiftLeft">≫</button><button data-k="KeyW">▲</button></div>
 </div>
-<div id="title" class="overlay"><div>
+<div id="intake" class="overlay"><div>
+  <div class="form">
+    <div class="formh">St. Mercy General &middot; Admissions</div>
+    <h2 style="color:var(--telem);margin:2px 0 16px">PATIENT INTAKE</h2>
+    <div class="formlab">Patient Name</div>
+    <input id="nameField" maxlength="18" placeholder="e.g. Chad Thunderbolt" autocomplete="off">
+    <div class="formlab">Patient Profile</div>
+    <div id="charGrid"></div>
+    <button id="admitBtn">ADMIT PATIENT &rarr;</button>
+  </div>
+</div></div>
+<div id="title" class="overlay hidden"><div>
   <div class="sub">Runaway Patient Simulator</div>
   <h1>GURNEY</h1>
   <p>Nineteen worlds. One hospital bed. Zero survival instinct.</p>
+  <div id="admitted" class="sub" style="color:var(--telem);margin-top:2px"></div>
   <div id="menuLevels"></div>
   <div class="menurow">
+    <button id="newPatientBtn">🏥 New Patient</button>
     <button id="randomBtn">🎲 Random</button>
     <button id="playBtn">▶ PLAY</button>
   </div>
@@ -234,21 +260,22 @@ applyMod(0);
 // ---------- rider ----------
 const SKIN=new THREE.MeshStandardMaterial({color:0xe8c39e}),SHIRT=new THREE.MeshStandardMaterial({color:0x2e6cf0});
 const PANTS=new THREE.MeshStandardMaterial({color:0x394150}),HAIR=new THREE.MeshStandardMaterial({color:0x3a2a1a});
+const riderSkin=SKIN.clone(), riderHair=HAIR.clone(); // the gurney patient gets its own skin/hair so we can tint per character
 function buildSupine(){const g=new THREE.Group();
   const t=box(.8,.35,1.3,SHIRT);t.position.set(0,1.4,-.1);g.add(t);
   const h=box(.7,.3,.6,PANTS);h.position.set(0,1.38,.7);g.add(h);
-  const hd=ball(.28,SKIN);hd.position.set(0,1.45,-1);g.add(hd);
-  const hr=ball(.3,HAIR);hr.position.set(0,1.55,-1.05);hr.scale.set(1,.6,1);g.add(hr);
-  for(const sx of[-.5,.5]){const a=cap(.1,.7,SKIN);a.rotation.x=Math.PI/2;a.position.set(sx,1.35,-.1);g.add(a);}
+  const hd=ball(.28,riderSkin);hd.position.set(0,1.45,-1);g.add(hd);
+  const hr=ball(.3,riderHair);hr.position.set(0,1.55,-1.05);hr.scale.set(1,.6,1);g.add(hr);
+  for(const sx of[-.5,.5]){const a=cap(.1,.7,riderSkin);a.rotation.x=Math.PI/2;a.position.set(sx,1.35,-.1);g.add(a);}
   for(const sx of[-.22,.22]){const l=cap(.13,.9,PANTS);l.rotation.x=Math.PI/2;l.position.set(sx,1.32,1.4);g.add(l);}
   return g;}
 function buildSurfer(){const g=new THREE.Group();
   for(const sx of[-.2,.2]){const leg=cap(.13,.7,PANTS);leg.position.set(sx,1.75,.1);leg.rotation.x=-.15;g.add(leg);}
   const h=box(.55,.4,.35,PANTS);h.position.set(0,2.15,0);g.add(h);
   const t=cap(.26,.55,SHIRT);t.position.set(0,2.7,-.05);g.add(t);
-  const hd=ball(.26,SKIN);hd.position.set(0,3.25,-.05);g.add(hd);
-  const hr=ball(.28,HAIR);hr.position.set(0,3.33,-.05);hr.scale.set(1,.7,1);g.add(hr);
-  for(const s of[-1,1]){const a=cap(.1,.7,SKIN);a.position.set(s*.45,2.85,-.05);a.rotation.z=s*1;g.add(a);}
+  const hd=ball(.26,riderSkin);hd.position.set(0,3.25,-.05);g.add(hd);
+  const hr=ball(.28,riderHair);hr.position.set(0,3.33,-.05);hr.scale.set(1,.7,1);g.add(hr);
+  for(const s of[-1,1]){const a=cap(.1,.7,riderSkin);a.position.set(s*.45,2.85,-.05);a.rotation.z=s*1;g.add(a);}
   return g;}
 function submersible(){const g=new THREE.Group();
   const hull=cyl(2.2,2.2,7,new THREE.MeshStandardMaterial({color:0xdedede,metalness:.5,roughness:.4}),16);hull.rotation.z=Math.PI/2;hull.position.y=2.2;g.add(hull);
@@ -285,11 +312,30 @@ let current='garage', spawn=new THREE.Vector3(), spawnHeading=0; // declared her
 const scuba=scubaMask();scuba.visible=false;
 const riderRoot=new THREE.Group(); const supine=buildSupine(),surfer=buildSurfer();
 supine.add(scuba); scuba.position.set(0,1.45,-1); // sits on the supine patient's face
+const injuries=[]; // the patient visibly falls apart as condition drops
+(function(){const bandM=new THREE.MeshStandardMaterial({color:0xeef0ec,roughness:.95});
+  const bloodM=new THREE.MeshStandardMaterial({color:0x8f1d1d,roughness:.8});
+  function inj(mesh,below){mesh.visible=false;supine.add(mesh);injuries.push({mesh,showBelow:below});}
+  const hb=new THREE.Mesh(new THREE.TorusGeometry(.3,.06,6,16),bandM);hb.rotation.x=Math.PI/2;hb.position.set(0,1.53,-1);inj(hb,80);
+  const ac=cyl(.135,.135,.72,bandM,8);ac.rotation.x=Math.PI/2;ac.position.set(-.5,1.37,-.1);inj(ac,58);
+  const hb2=box(.62,.11,.5,bandM);hb2.position.set(0,1.52,-1);hb2.rotation.z=.55;inj(hb2,45);
+  const lc=cyl(.165,.165,.95,bandM,8);lc.rotation.x=Math.PI/2;lc.position.set(.22,1.36,1.4);inj(lc,32);
+  const bs=box(.34,.02,.44,bloodM);bs.position.set(.08,1.6,.15);inj(bs,18);
+})();
 riderRoot.add(supine,surfer); riderRoot.rotation.order='YXZ'; scene.add(riderRoot);
 let riderMode='supine'; let mirrorGaze=0, mirrorHinted=false;
+const CHARS=[
+  {id:'florida',name:'Florida Man', emoji:'\ud83d\udc0a', flavor:'Wrestled a gator. Felt nothing.',           risk:'NORMAL',  frag:1.0,  skin:0xe8c39e, hair:0xd8b048},
+  {id:'granny', name:'Granny',      emoji:'\ud83d\udc75', flavor:'89 years young. Bones like chalk.',        risk:'EXTREME', frag:1.8,  skin:0xf0dccb, hair:0xe6e6e6},
+  {id:'alien',  name:'The Visitor', emoji:'\ud83d\udc7d', flavor:'Crash-landed. Anatomy unclear.',           risk:'LOW',     frag:0.6,  skin:0x8fd88f, hair:0x2f5a34},
+  {id:'dummy',  name:'Crash Dummy', emoji:'\ud83d\udea7', flavor:'Literally built for this.',                risk:'MINIMAL', frag:0.4,  skin:0xf0c020, hair:0x2a2a2a},
+];
+let patient={name:'', char:CHARS[0]};
+function applyPatient(c){patient.char=c; riderSkin.color.setHex(c.skin); riderHair.color.setHex(c.hair); applyRider();}
 function applyRider(){supine.visible=riderMode==='supine';surfer.visible=riderMode==='surfer';
   if(typeof scuba!=='undefined')scuba.visible=(typeof current!=='undefined'&&current==='ocean'&&riderMode==='supine');
-  document.getElementById('rider').textContent=riderMode==='supine'?'Supine patient':'Surfer';}
+  const nm=(patient.name||patient.char.name);
+  document.getElementById('rider').textContent=nm+(riderMode==='surfer'?' (up)':'');}
 applyRider();
 
 // ---------- world ----------
@@ -1384,7 +1430,7 @@ let smashed=0, mayhem=0, comboCount=0, comboTimer=0, airTime=0;
 let condition=100, pitchVel=0, wasAir=false, adrenaline=0, ecgPhase=0, flatlined=false;
 let pickups=[], codeBlue=0, deathCause='', subRef=null;
 const ecgBuf=new Array(108).fill(0);
-function hurt(n,why){ if(flatlined)return; runDamage+=n;
+function hurt(n,why){ if(flatlined)return; n*=patient.char.frag; runDamage+=n;
   condition=Math.max(0,condition-n); adrenaline=Math.min(1,adrenaline+n/45);
   if(condition<=0&&codeBlue<=0){ // heart stops — you have a few seconds to reach a defibrillator
     codeBlue=7; deathCause=why||'Succumbed to injuries';
@@ -1454,6 +1500,7 @@ function ecgWave(t){
   return 0;}
 const COND=[[75,'STABLE','#5cd6a8'],[45,'GUARDED','#ffd34d'],[20,'SERIOUS','#ff9f43'],[1,'CRITICAL','#ff5a5a'],[-1,'ASYSTOLE','#ff2d2d']];
 function drawVitals(dt){
+  for(const inj of injuries)inj.mesh.visible=(condition<inj.showBelow);
   const c=Math.max(0,condition);
   let hr,sys,dia,o2;
   if(flatlined){hr=0;sys=0;dia=0;o2=0;}
@@ -1859,6 +1906,23 @@ function openMenu(){gameStarted=false;paused=false;
   document.getElementById('pause').classList.add('hidden');document.getElementById('end').classList.add('hidden');
   buildMenu();document.getElementById('title').classList.remove('hidden');}
 document.getElementById('playBtn').onclick=startGame;
+// ---- patient intake ----
+const charGrid=document.getElementById('charGrid');
+function riskColor(r){return r==='EXTREME'?'#ff5a5a':r==='NORMAL'?'#ffd34d':'#5cd6a8';}
+function buildCharCards(){charGrid.innerHTML='';
+  CHARS.forEach(c=>{const d=document.createElement('div');d.className='charcard'+(c===patient.char?' sel':'');
+    d.innerHTML='<div class="emoji">'+c.emoji+'</div><div class="cname">'+c.name+'</div><div class="cflavor">'+c.flavor+'</div><div class="crisk" style="color:'+riskColor(c.risk)+'">INJURY RISK '+c.risk+'</div>';
+    d.onclick=()=>{applyPatient(c);[...charGrid.children].forEach(x=>x.classList.remove('sel'));d.classList.add('sel');};
+    charGrid.appendChild(d);});}
+buildCharCards(); applyPatient(CHARS[0]);
+document.getElementById('admitBtn').onclick=()=>{
+  patient.name=(document.getElementById('nameField').value||'').trim();
+  document.getElementById('admitted').textContent='Patient: '+(patient.name||patient.char.name)+' \u00b7 '+patient.char.name+' \u00b7 injury risk '+patient.char.risk;
+  applyRider(); document.getElementById('intake').classList.add('hidden');
+  buildMenu(); document.getElementById('title').classList.remove('hidden');};
+document.getElementById('newPatientBtn').onclick=()=>{
+  document.getElementById('title').classList.add('hidden');
+  document.getElementById('intake').classList.remove('hidden');};
 document.getElementById('menuBtn').onclick=openMenu;
 // build the level picker on the menu from the level list itself, so new levels show up automatically
 const menuGrid=document.getElementById('menuLevels');
