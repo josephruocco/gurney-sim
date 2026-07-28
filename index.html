@@ -732,7 +732,10 @@ function buildLot(){
   beacon.position.set(PARK_BAY.x,8,PARK_BAY.z);world.add(beacon);                                   // unmissable pillar of light over the target
   flashToast('\ud83c\udd7f\ufe0f Park in the GREEN spot before the rival!');
   rivalRef=parkedCar();rivalRef.position.set(PARK_BAY.x,0,PARK_BAY.z+62);rivalRef.rotation.y=Math.PI;
-  rivalRef.traverse(o=>o.castShadow=true);world.add(rivalRef);rivalRef.userData={parked:false,beaten:false};
+  const rivalYellow=new THREE.MeshStandardMaterial({color:0xffd21a,metalness:.3,roughness:.5});
+  rivalRef.traverse(o=>{o.castShadow=true; if(o.material&&o.material.color&&o.material.color.getHex()>0x222222)o.material=rivalYellow;}); // your rival, obviously
+  const rivalMark=cone(.85,1.5,new THREE.MeshStandardMaterial({color:0xff3a3a,emissive:0xff3a3a,emissiveIntensity:.65}),12);rivalMark.rotation.x=Math.PI;rivalMark.position.y=4.4;rivalRef.add(rivalMark);
+  world.add(rivalRef);rivalRef.userData={state:'approach',wait:0,marker:rivalMark};
   for(const x of[-30,0,30])for(const z of[-44,0,44]){const p=box(.4,9,.4,new THREE.MeshStandardMaterial({color:0x44484e}));p.position.set(x,4.5,z);p.castShadow=true;world.add(p);
     const lamp=box(2,.3,1,new THREE.MeshStandardMaterial({color:0xfff2c0,emissive:0xfff2c0,emissiveIntensity:.7}));lamp.position.set(x,9,z);world.add(lamp);solids.push({position:p.position,radius:.6});}
   const store=box(70,12,8,new THREE.MeshStandardMaterial({color:0xb8c0c8}));store.position.set(0,6,-78);store.castShadow=true;world.add(store);
@@ -1268,7 +1271,7 @@ let counts={}, flags={}, curChallenges=[];
 const c=(t,n)=>(counts[t]||0)>=n;
 const CHALLENGES={
   garage:[['Smash 6 traffic cones',()=>c('trafficCone',6)],['Knock over 5 trash cans',()=>c('trashCan',5)],['Reach the top floor',()=>gurney.position.y>9]],
-  lot:[['Steal the last parking spot',()=>flags.spotStolen],['Park like a menace',()=>flags.badPark],['Flatten 8 shopping carts',()=>c('shoppingCart',8)],['Topple 3 power poles',()=>c('powerPole',3)]],
+  lot:[['Steal the last spot (stop in the green pillar)',()=>flags.spotStolen],['Park like a menace',()=>flags.badPark],['Flatten 8 shopping carts',()=>c('shoppingCart',8)],['Topple 3 power poles',()=>c('powerPole',3)]],
   park:[['Mow down 6 Canadians',()=>c('canadian',6)],['Send 2 strollers flying',()=>c('strollerLady',2)],['Smash 6 trash cans',()=>c('trashCan',6)]],
   niagara:[['Go over the falls',()=>flags.falls],['Roll 4 barrels',()=>c('barrel',4)],['Catch big air',()=>flags.air]],
   pyramids:[['Scale a pyramid',()=>gurney.position.y>7],['Stampede 6 camels',()=>c('camel',6)],['Smash 6 cones',()=>c('trafficCone',6)]],
@@ -1715,20 +1718,20 @@ function tick(){
       if(mirrorGaze>3&&!flags.admired){flags.admired=true;mayhem+=300;sfxChime();flashToast('\ud83d\udcaa ADMIRED YOURSELF FOR TOO LONG! +300');}
     } else mirrorGaze=Math.max(0,mirrorGaze-dt*2);
   }
-  if(current==='lot'&&rivalRef){ // supermarket: race a rival to the free bay, and park like a menace
+  if(current==='lot'&&rivalRef){ // steal the last spot: pull into the green pillar before the rival takes it
     const ud=rivalRef.userData;
-    if(!ud.parked&&!ud.beaten){ // rival creeps toward the open spot
-      const dz=PARK_BAY.z-rivalRef.position.z;
-      if(Math.abs(dz)>0.6)rivalRef.position.z+=Math.sign(dz)*7*dt; else ud.parked=true;
-    }
-    const inBay=Math.abs(gurney.position.x-PARK_BAY.x)<2.4&&Math.abs(gurney.position.z-PARK_BAY.z)<3.4;
-    if(inBay&&Math.abs(v.speed)<3){
-      if(!ud.parked&&!flags.spotStolen){ // got there first
-        flags.spotStolen=true;ud.beaten=true;mayhem+=400;sfxChime();flashToast('\ud83c\udd7f\ufe0f SPOT STOLEN! +400');
-        rivalRef.userData.hx=1;
+    if(ud.marker)ud.marker.position.y=4.4+Math.sin(performance.now()*0.005)*0.35;
+    if(!flags.spotStolen){
+      // rival circles: approach -> wait a few seconds -> give up and loop back. the spot is NEVER lost for good
+      if(ud.state==='approach'){const dz=PARK_BAY.z-rivalRef.position.z;
+        if(Math.abs(dz)>0.8)rivalRef.position.z+=Math.sign(dz)*5*dt; else{ud.state='waiting';ud.wait=0;}}
+      else if(ud.state==='waiting'){ud.wait+=dt; if(ud.wait>3.5)ud.state='leaving';}
+      else if(ud.state==='leaving'){rivalRef.position.z+=13*dt; if(rivalRef.position.z>PARK_BAY.z+72){rivalRef.position.z=PARK_BAY.z+62;ud.state='approach';}}
+      // forgiving steal: get into the bay at a sane speed and it's yours
+      if(Math.abs(gurney.position.x-PARK_BAY.x)<3.2&&Math.abs(gurney.position.z-PARK_BAY.z)<4.4&&Math.abs(v.speed)<7){
+        flags.spotStolen=true;mayhem+=400;sfxChime();flashToast('\ud83c\udd7f\ufe0f SPOT STOLEN! +400');ud.state='leaving';if(ud.marker)ud.marker.visible=false;
       }
-    }
-    if(ud.beaten){rivalRef.position.z+=9*dt;} // rival gives up and drives off
+    } else if(rivalRef.position.z<PARK_BAY.z+72){rivalRef.position.z+=13*dt;} // rival slinks off after you win
     // parked badly = stopped in any bay at a rude angle to the bay axis
     if(Math.abs(v.speed)<3&&!flags.badPark){
       const bx=Math.round((gurney.position.x-1.5)/3)*3+1.5, bz=Math.round(gurney.position.z/22)*22;
