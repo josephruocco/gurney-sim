@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GURNEY — Release Log</title>
+<style>
+  :root{
+    --telem:#5cd6a8; --amber:#ffd34d; --red:#ff5a5a;
+    --text:#dfeee8; --muted:#5f8a7b;
+    --panel:rgba(9,17,20,.72); --line:rgba(92,214,168,.20);
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(120% 120% at 50% 0%,#0a141a,#050809 70%);
+    color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+    padding:48px 20px 80px}
+  .wrap{max-width:760px;margin:0 auto}
+  header{text-align:center;margin-bottom:40px}
+  .sub{font-family:var(--mono);font-size:12px;letter-spacing:5px;color:var(--muted);text-transform:uppercase}
+  h1{font-size:60px;font-weight:900;letter-spacing:10px;margin:6px 0 4px;color:var(--telem);
+    text-shadow:0 0 36px rgba(92,214,168,.3)}
+  .tag{font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--muted)}
+  .tag a{color:var(--telem);text-decoration:none}
+  .tag a:hover{text-decoration:underline}
+  .rel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:16px 0;
+    backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+  .relh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  .relh::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--telem);
+    box-shadow:0 0 9px var(--telem);align-self:center}
+  .ver{font-family:var(--mono);font-weight:800;font-size:15px;color:var(--telem);letter-spacing:1px}
+  .code{font-family:var(--sans);font-weight:800;font-size:17px}
+  .date{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto;letter-spacing:1px}
+  .rel ul{list-style:none;margin:12px 0 2px;padding:0}
+  .rel li{position:relative;padding:4px 0 4px 20px;font-size:14.5px;line-height:1.5;color:var(--text)}
+  .rel li::before{content:'+';position:absolute;left:2px;color:var(--telem);font-family:var(--mono);font-weight:800}
+  .rel li.fix::before{content:'~';color:var(--amber)}
+  .rel b{color:var(--telem);font-weight:700}
+  footer{text-align:center;margin-top:36px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="sub">St. Mercy General &middot; Patient Chart</div>
+    <h1>GURNEY</h1>
+    <div class="tag">RELEASE LOG &nbsp;&middot;&nbsp; <a href="https://gurney.josephruocco.net">play &rarr;</a></div>
+  </header>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.6</span><span class="code">Bedside Manner</span><span class="date">Jul 28, 2026</span></div>
+    <ul>
+      <li><b>Patient Intake:</b> name your patient and choose from Florida Man, Geezer, The Visitor, or Crash Dummy, each with its own injury risk that changes the difficulty.</li>
+      <li>Patients now visibly fall apart as their condition drops: bandages, an arm cast, a leg cast, then blood.</li>
+      <li>Full interface overhaul into a cohesive medical-telemetry look, plus a new title screen.</li>
+      <li>HUD panels are now collapsible: minimize the monitor, objectives, or telemetry to clear the view.</li>
+      <li>Ohio's crop circle is now a dense, realistic pattern with swirl rings, spokes, and satellite circles.</li>
+      <li class="fix">Supermarket: the steal-the-spot objective is clearer and always achievable, and the lot is actually drivable now.</li>
+    </ul>
+  </div>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.5</span><span class="code">Vital Signs</span><span class="date">Jul 23&ndash;27, 2026</span></div>
+    <ul>
+      <li>Runs are now ranked <b>1&ndash;4 stars</b> for clearing challenges, avoiding injuries, and beating the clock.</li>
+      <li>The timer counts up in minutes and seconds; per-level difficulty labels and best-rank tracking.</li>
+      <li>New gym challenge: stand at the mirror and admire yourself a little too long.</li>
+    </ul>
+  </div>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.4</span><span class="code">Little Green Men</span><span class="date">Jul 22, 2026</span></div>
+    <ul>
+      <li><b>Ohio:</b> summon the aliens by carving a crop circle in the field.</li>
+      <li><b>Trampoline:</b> land a full flip. <b>Minefield:</b> the patient now wears a combat helmet.</li>
+      <li>Airborne pitch gauge and landing hints so you can actually stick a clean landing.</li>
+      <li>All-challenges-complete screen with a next-level flow.</li>
+    </ul>
+  </div>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.3</span><span class="code">Code Blue</span><span class="date">Jul 20, 2026</span></div>
+    <ul>
+      <li><b>Condition &amp; vitals system:</b> a live patient monitor, injuries, a CODE BLUE window, and defibrillator revives.</li>
+      <li><b>New world, Cape Gurney:</b> ride the elevator, board the rocket, and discover the Earth is flat.</li>
+      <li>Air control: tilt the gurney in flight and land clean to stay alive.</li>
+      <li><b>Ocean:</b> a shark that hunts you, the lost submersible, a sunken wreck, and oxygen tanks.</li>
+      <li><b>Coaster:</b> a drivable corkscrew loop, a "you must be this tall" sign, and a derailable rollercoaster.</li>
+      <li>Supermarket parking rivalry and a hospital baby delivery (with a twist).</li>
+    </ul>
+  </div>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.2</span><span class="code">Grand Rounds</span><span class="date">Jul 18, 2026</span></div>
+    <ul>
+      <li>New menu and four new levels, including <b>St. Mercy General</b>.</li>
+      <li>The coaster loop became a real drivable corkscrew you enter one end of and exit the other.</li>
+      <li>A ferris wheel you can knock off its hinges and send rolling around the level.</li>
+      <li class="fix">Big physics overhaul: fixed ramp launches, slope climbing, terrain heights, sinking props, and invisible walls.</li>
+    </ul>
+  </div>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.1</span><span class="code">First Lap</span><span class="date">Jul 14, 2026</span></div>
+    <ul>
+      <li>Mouse-look camera and a new level: <b>Rural Ohio</b>.</li>
+      <li class="fix">Garage inter-floor ramps and gurney mods fixed.</li>
+    </ul>
+  </div>
+
+  <div class="rel">
+    <div class="relh"><span class="ver">v1.0</span><span class="code">Admitted</span><span class="date">Jul 2, 2026</span></div>
+    <ul>
+      <li>Initial release. One runaway hospital gurney. Several poor decisions.</li>
+    </ul>
+  </div>
+
+  <footer>GURNEY is built by directing an AI coding agent in plain English.</footer>
+</div>
+</body>
+</html>
