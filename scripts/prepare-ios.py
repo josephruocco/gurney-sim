@@ -15,4 +15,4 @@ if count != 1:
 for name in ("three.min.js", "THREE-LICENSE.txt"):
     (destination / name).write_bytes((root / "vendor" / name).read_bytes())
 
-shutil.copytree(root / "assets", destination / "assets", dirs_exist_ok=True)
+shutil.copytree(root / "assets", destination / "assets", dirs_exist_ok=True, ignore=shutil.ignore_patterns("*.md"))

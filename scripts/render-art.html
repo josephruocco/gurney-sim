@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Gurney Journey — model artwork</title><style>body{margin:0;background:#fff4de;color:#31596c;font:16px system-ui}main{display:flex;gap:20px;align-items:center;flex-wrap:wrap}canvas{width:min(46vw,600px)!important;height:auto!important;aspect-ratio:1;object-fit:contain}p{padding:16px}</style></head><body><p id="status">Rendering the shared game model…</p><main id="previews"></main>
+<script src="../vendor/three.min.js"></script><script src="../assets/mascot.js"></script><script>
+(async()=>{
+  const output=document.getElementById('previews');
+  for(const mode of ['title','icon']){
+    const scene=new THREE.Scene();
+    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:mode==='title',preserveDrawingBuffer:true});
+    renderer.setSize(1024,1024);renderer.setPixelRatio(1);renderer.shadowMap.enabled=true;
+    if(mode==='icon')scene.background=new THREE.Color(0xfff4de);
+    const {sun}=GurneyArt.addLighting(THREE,scene);sun.shadow.mapSize.set(1024,1024);
+    let camera;
+    if(mode==='title'){
+      scene.add(GurneyArt.createBed(THREE));
+      scene.add(GurneyArt.createRider(THREE,true));
+      camera=new THREE.OrthographicCamera(-2.6,2.6,2.6,-2.6,.1,40);camera.position.set(3.4,4.3,6);camera.lookAt(0,1.5,0);
+    }else{
+      scene.add(GurneyArt.createPatient(THREE));
+      camera=new THREE.OrthographicCamera(-1.2,1.2,1.2,-1.2,.1,40);camera.position.set(.55,1.35,5);camera.lookAt(0,1.02,0);
+    }
+    renderer.render(scene,camera);output.appendChild(renderer.domElement);
+    const png=await new Promise(resolve=>renderer.domElement.toBlob(resolve,'image/png'));
+    const response=await fetch('/render/'+mode,{method:'POST',headers:{'Content-Type':'image/png'},body:png});
+    if(!response.ok)throw new Error('Could not save '+mode);
+  }
+  document.getElementById('status').textContent='Saved title artwork and app icon from the exact models used in gameplay.';
+})().catch(error=>{document.getElementById('status').textContent=error.stack;});
+</script></body></html>

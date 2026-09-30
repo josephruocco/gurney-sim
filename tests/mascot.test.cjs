@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict');
+const THREE=require('../vendor/three.min.js');
+require('../assets/mascot.js');
+const {createPatient,createBed,createRider}=globalThis.GurneyArt;
+const lying=createRider(THREE,false),standing=createRider(THREE,true);
+const bounds=m=>new THREE.Box3().setFromObject(m);
+assert(bounds(lying).min.y>=1.14,'Lying patient must rest above the mattress');
+assert(bounds(lying).max.y<2.6,'Lying patient must clear the existing low bar');
+assert(bounds(standing).min.y>=1.17,'Standing patient feet must rest on the mattress');
+assert(bounds(standing).max.y>2.6,'Standing patient must retain the tall-rider challenge');
+assert(bounds(lying).min.z>=-1.6&&bounds(lying).max.z<=1.6,'Lying patient must fit the bed length');
+const bed=createBed(THREE);
+assert.equal(bed.userData.stockWheels.length,4,'Cosmetic wheel mods need four stock wheels');
+const first=createPatient(THREE),second=createPatient(THREE);
+first.userData.skin.color.setHex(0x8fd88f);
+assert.equal(second.userData.skin.color.getHex(),0xf0c7a5,'Profile tint must not leak to other models');
+for(const model of [lying,standing,bed])model.traverse(mesh=>{
+ if(mesh.isMesh)for(const value of mesh.geometry.attributes.position.array)assert(Number.isFinite(value));
+});
+console.log('Mascot geometry, poses, wheel compatibility, and independent profile colors passed.');
