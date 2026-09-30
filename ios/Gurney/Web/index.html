@@ -851,7 +851,9 @@ function scatter(make,n,r,mass,range,avoid=8){for(let i=0;i<n;i++){let x,z;
   do{x=rand(-range,range);z=rand(-range,range);}while(Math.hypot(x,z)<avoid);addProp(make(),x,z,r,mass,make.name);}}
 
 // ---------- levels ----------
+let garageTargets=[],garageBumped=new Set();
 function buildGarage(){
+  garageTargets=[];garageBumped.clear();
   scene.background=new THREE.Color(0xb4ced8);scene.fog=new THREE.Fog(0xb4ced8,50,150);hemi.intensity=.5;
   const con=new THREE.MeshStandardMaterial({color:0xb5c1c5,roughness:.95});
   const top=new THREE.MeshStandardMaterial({color:0x8ca6b1,roughness:.95});
@@ -859,13 +861,13 @@ function buildGarage(){
   const floors=[0,5,10];
   for(let i=0;i<3;i++){const cx=i*45,fy=floors[i];
     slab(30,.4,60,cx,fy,0,con,{drive:true}); slab(30,.3,60,cx,fy+4.7,0,top,{ceil:true});
-    for(const zz of[-22,0,22])for(const xx of[cx-13.5,cx+13.5])slab(1.4,4.6,1.4,xx,fy+2.3,zz,top,{solid:true,r:1.1});
+    for(const zz of[-22,0,22])for(const xx of[cx-13.5,cx+13.5]){slab(1.4,4.6,1.4,xx,fy+2.3,zz,top,{solid:true,r:1.1});const target=solids[solids.length-1];target.garageFloor=fy;garageTargets.push(target);}
     // painted bays + parked cars along both long walls
     for(const zrow of[23,-23]){
       for(let s=-4;s<=4;s++){const m=box(.12,.02,4.4,white);m.position.set(cx+s*3,fy+0.22,zrow);world.add(m);}
       for(let s=-4;s<=3;s++){ if(Math.random()<0.35) continue;
         const car=parkedCar(); car.position.set(cx+(s+0.5)*3,fy+0.2,zrow); car.rotation.y=zrow>0?Math.PI:0;
-        car.traverse(o=>o.castShadow=true); world.add(car); solids.push({position:car.position,radius:2.2});}
+        car.traverse(o=>o.castShadow=true); world.add(car); const target={position:car.position,radius:2.2,garageFloor:fy};solids.push(target);garageTargets.push(target);}
     }
     // guard rails so you can't drive off the sides (ramp openings on the x-ends stay clear)
     wallLine(cx-15,30,cx+15,30,fy); wallLine(cx-15,-30,cx+15,-30,fy);
@@ -1433,7 +1435,7 @@ function gotoNextLevel(){document.getElementById('cleared').classList.add('hidde
 let counts={}, flags={}, curChallenges=[];
 const c=(t,n)=>(counts[t]||0)>=n;
 const CHALLENGES={
-  garage:[['Smash 6 traffic cones',()=>c('trafficCone',6)],['Knock over 5 trash cans',()=>c('trashCan',5)],['Reach the top floor',()=>gurney.position.y>9]],
+  garage:[['Bump every pole and car',()=>garageTargets.length>0&&garageBumped.size===garageTargets.length],['Smash 6 traffic cones',()=>c('trafficCone',6)],['Knock over 5 trash cans',()=>c('trashCan',5)],['Reach the top floor',()=>gurney.position.y>9]],
   lot:[['Steal the last spot (stop in the green pillar)',()=>flags.spotStolen],['Park like a menace',()=>flags.badPark],['Flatten 8 shopping carts',()=>c('shoppingCart',8)],['Topple 3 power poles',()=>c('powerPole',3)]],
   park:[['Mow down 6 Canadians',()=>c('canadian',6)],['Send 2 strollers flying',()=>c('strollerLady',2)],['Smash 6 trash cans',()=>c('trashCan',6)]],
   niagara:[['Go over the falls',()=>flags.falls],['Roll 4 barrels',()=>c('barrel',4)],['Catch big air',()=>flags.air]],
@@ -1454,14 +1456,14 @@ const CHALLENGES={
   hospital:[['Deliver the baby',()=>flags.babyDelivered],['Learn the truth',()=>flags.notTheFather],['Total 8 wheelchairs',()=>c('wheelchair',8)],['Escape through the exit',()=>gurney.position.z>70&&Math.abs(gurney.position.x)<9]],
 };
 let chalMin=false;
-function objRow(ch){return '<div class="obj'+(ch.done?' done':'')+'"><span class="box"></span><span>'+ch.label+'</span></div>';}
+function objRow(ch){return '<div class="obj'+(ch.done?' done':'')+'"><span class="box"></span><span>'+ch.label+(ch.label==='Bump every pole and car'?' ('+garageBumped.size+'/'+garageTargets.length+')':'')+'</span></div>';}
 function renderChallenges(){const el=document.getElementById('chal');
   if(chalMin){const next=curChallenges.find(c=>!c.done);
     el.innerHTML='<div class="panel-h">Objectives</div>'+(next?objRow(next):'<div class="obj done"><span class="box"></span><span>All clear</span></div>');
   }else{
     el.innerHTML='<div class="panel-h">Objectives</div>'+curChallenges.map(objRow).join('');
   }}
-function setChallenges(level){counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;runElapsed=0;runDamage=0;rec=[];recAcc=0;replay=null;mirrorGaze=0;mirrorHinted=false;levelCleared=false;document.getElementById('cleared').classList.add('hidden');timerEl.textContent='';document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
+function setChallenges(level){garageBumped.clear();counts={};flags={};condition=100;flatlined=false;adrenaline=0;pitchVel=0;wasAir=false;flipAccum=0;cropStart=null;cropTurn=0;runElapsed=0;runDamage=0;rec=[];recAcc=0;replay=null;mirrorGaze=0;mirrorHinted=false;levelCleared=false;document.getElementById('cleared').classList.add('hidden');timerEl.textContent='';document.querySelector('#end h2').textContent='Time!';curChallenges=(CHALLENGES[level]||[]).map(([label,test])=>({label,test,done:false}));renderChallenges();}
 function judgeLanding(impact,gr){
   if(!wasAir||flatlined)return; wasAir=false; pitchVel=0; flipAccum=0;
   // how close was the gurney's pitch to the slope it actually hit?
@@ -1846,6 +1848,15 @@ function tick(){
     const nz=gurney.position.z-Math.cos(v.heading)*v.speed*dt;
     let blocked=false;
     for(const s of solids){if(Math.hypot(nx-s.position.x,nz-s.position.z)<s.radius+1.2){blocked=true;break;}}
+    if(blocked&&current==='garage'&&Math.abs(v.speed)>.5){
+      let added=false;
+      for(const target of garageTargets){
+        if(Math.abs(gurney.position.y-target.garageFloor)<2&&Math.hypot(nx-target.position.x,nz-target.position.z)<target.radius+1.2&&!garageBumped.has(target)){
+          garageBumped.add(target);added=true;
+        }
+      }
+      if(added){renderChallenges();flashToast('Bumped '+garageBumped.size+' / '+garageTargets.length);}
+    }
     if(blocked){if(Math.abs(v.speed)>18)hurt(Math.abs(v.speed)*0.25,'Smeared across a wall');v.speed*=-0.3;} else{gurney.position.x=nx;gurney.position.z=nz;}
 
     // vertical: ground-follow, ramps, and free-fall off edges (Niagara!)

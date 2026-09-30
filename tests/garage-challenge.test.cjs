@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+const start=source.indexOf("    if(blocked&&current==='garage'");
+const end=source.indexOf('\n    if(blocked){',start);
+const target={position:{x:0,z:0},radius:1.1,garageFloor:5};
+const ctx={blocked:true,current:'garage',v:{speed:2},gurney:{position:{y:5}},nx:1,nz:0,garageTargets:[target],garageBumped:new Set(),renderChallenges(){},flashToast(){}};
+vm.createContext(ctx);
+const bump=()=>vm.runInContext(source.slice(start,end),ctx);
+bump();bump();assert.equal(ctx.garageBumped.size,1,'Repeated contact counts once');
+ctx.garageBumped.clear();ctx.gurney.position.y=0;bump();assert.equal(ctx.garageBumped.size,0,'Wrong floor does not count');
+ctx.gurney.position.y=5;ctx.v.speed=0;bump();assert.equal(ctx.garageBumped.size,0,'Stationary proximity does not count');
+ctx.v.speed=2;ctx.nx=10;bump();assert.equal(ctx.garageBumped.size,0,'Distant target does not count');
+ctx.nx=1;ctx.current='lot';bump();assert.equal(ctx.garageBumped.size,0,'Other levels do not count');
+console.log('Garage unique contacts, floor, speed, distance, and level checks passed.');
