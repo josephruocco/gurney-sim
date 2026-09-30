@@ -8,17 +8,17 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
   :root{
-    --telem:#5cd6a8; --amber:#ffd34d; --red:#ff5a5a;
-    --text:#dfeee8; --muted:#5f8a7b;
-    --panel:rgba(9,17,20,.80); --line:rgba(92,214,168,.20); --r:11px;
+    --telem:#318574; --amber:#b8792e; --red:#d76f58;
+    --text:#31596c; --muted:#617d87;
+    --panel:rgba(255,244,222,.92); --line:rgba(49,89,108,.20); --r:11px;
     --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
     --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;overflow:hidden;background:#060a0e;font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased}
   canvas{display:block}
-  #vignette{position:fixed;inset:0;pointer-events:none;z-index:9;box-shadow:inset 0 0 200px rgba(0,0,0,.5);background:radial-gradient(120% 120% at 50% 40%,transparent 60%,rgba(0,0,0,.28))}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:var(--mono);color:var(--text);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:9;box-shadow:inset 0 0 140px rgba(49,89,108,.08);background:none}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:var(--mono);color:var(--text);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(49,89,108,.12),inset 0 1px 0 rgba(255,255,255,.5)}
   .panel-h{font-size:9.5px;letter-spacing:2.5px;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:7px;text-transform:uppercase}
   .panel-h::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--telem);box-shadow:0 0 8px var(--telem);flex:none}
   .panel-h{cursor:pointer;user-select:none}
@@ -42,8 +42,8 @@
   .obj.done .box::after{content:'✓';color:#04120c;font-size:10px;font-weight:900;display:block;text-align:center;line-height:11px}
   #vitals #ecg{display:block;width:100%;height:38px;margin:5px 0}
   #vStatus{text-align:center;font-size:12px;font-weight:800;letter-spacing:2px;padding:4px 0;border-radius:5px;font-family:var(--mono)}
-  button{font-family:var(--mono);font-size:11.5px;letter-spacing:.4px;font-weight:600;padding:8px 12px;border:1px solid rgba(255,255,255,.09);border-radius:8px;cursor:pointer;background:rgba(18,28,32,.82);color:var(--text);transition:background .12s,border-color .12s,transform .06s;backdrop-filter:blur(6px);white-space:nowrap}
-  button:hover{background:rgba(34,50,55,.92);border-color:var(--line)}
+  button{font-family:var(--mono);font-size:11.5px;letter-spacing:.4px;font-weight:600;padding:8px 12px;border:1px solid rgba(255,255,255,.09);border-radius:8px;cursor:pointer;background:rgba(255,244,222,.94);color:var(--text);transition:background .12s,border-color .12s,transform .06s;backdrop-filter:blur(6px);white-space:nowrap}
+  button:hover{background:#e0edf0;border-color:var(--line)}
   button:active{transform:translateY(1px)}
   button.on{background:var(--telem);color:#04120c;border-color:var(--telem)}
   #ui{position:fixed;top:14px;right:14px;z-index:10;display:flex;flex-direction:column;gap:7px;align-items:flex-end}
@@ -63,7 +63,7 @@
   #pitch.show{opacity:1}
   #pitch .phint{font-family:var(--mono);font-size:12px;font-weight:700;color:#eaf2ee;letter-spacing:.5px;text-shadow:0 2px 6px #000}
   #help{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;color:var(--muted);opacity:.7;text-align:center;pointer-events:none}
-  .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 120% at 50% 35%,rgba(8,16,20,.82),rgba(3,6,9,.95));backdrop-filter:blur(5px);text-align:center;padding:20px}
+  .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(255,244,222,.96);backdrop-filter:blur(5px);text-align:center;padding:20px}
   .overlay.hidden{display:none}
   .overlay>div{display:flex;flex-direction:column;align-items:center;max-width:760px}
   .overlay h1{font-family:var(--sans);font-size:82px;font-weight:900;letter-spacing:14px;margin:0;color:var(--telem);text-shadow:0 0 40px rgba(92,214,168,.35),0 6px 16px #000;padding-left:14px}
@@ -181,6 +181,15 @@
   #charGrid .cflavor{color:#526a6a}
   #charGrid .crisk{color:#815438!important}
   #admitBtn{background:#f4bb69;color:#533f2c;border:2px solid #c8894b;border-radius:14px;box-shadow:0 3px 0 #c8894b}
+/* Gameplay uses the same warm paper and blue accents as the title artwork. */
+  #ui button,#touch button{background:rgba(255,244,222,.94);color:#31596c;border-color:rgba(49,89,108,.22);font-family:ui-rounded,var(--sans);font-weight:800}
+  #ui button:hover,#touch button:hover{background:#e0edf0}
+  #ui button.on,#touch button.on{background:#91c8d3;color:#24495b}
+  #ui #menuBtn{background:#df8b72;color:#422f29}
+  #timer{color:#31596c;background:rgba(255,244,222,.9);padding:3px 12px;border-radius:12px;text-shadow:none}
+  #help{color:#31596c;background:rgba(255,244,222,.85);padding:5px 10px;border-radius:8px;opacity:1}
+  #toast{color:#fff4de;text-shadow:0 2px 5px #31596c}
+  #levelcard .lc-tag{color:#31596c}
 </style>
 </head>
 <body>
@@ -190,7 +199,7 @@
   <div class="prow"><span class="plab">Location</span><b class="pval" id="loc">Parking Garage</b></div>
   <div class="prow"><span class="plab">Patient</span><b class="pval" id="rider">Supine patient</b></div>
   <div class="prow"><span class="plab">Speed</span><span><b class="pval" id="speed">0</b> <span class="unit">km/h</span></span></div>
-  <svg id="speedoSvg" viewBox="0 0 120 66"><path d="M10,60 A50,50 0 0 1 110,60" fill="none" stroke="rgba(92,214,168,.18)" stroke-width="7" stroke-linecap="round"/><line id="needle" x1="60" y1="60" x2="60" y2="16" stroke="#ffd34d" stroke-width="3" stroke-linecap="round" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="3.5" fill="#ffd34d"/></svg>
+  <svg id="speedoSvg" viewBox="0 0 120 66"><path d="M10,60 A50,50 0 0 1 110,60" fill="none" stroke="rgba(92,214,168,.18)" stroke-width="7" stroke-linecap="round"/><line id="needle" x1="60" y1="60" x2="60" y2="16" stroke="#a76b21" stroke-width="3" stroke-linecap="round" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="3.5" fill="#a76b21"/></svg>
   <div class="prow"><span class="plab">Smashed</span><b class="pval" id="smash">0</b></div>
   <div class="prow"><span class="plab">Mayhem</span><span><b class="pval accent" id="score">0</b> <span class="mult" id="combo"></span></span></div>
 </div>
@@ -210,7 +219,7 @@
 <div id="replaybadge">● REPLAY <span style="opacity:.6">· click to skip</span></div>
 <div id="pitch"><svg viewBox="0 0 160 84" width="160" height="84">
   <line id="pGround" x1="26" y1="56" x2="134" y2="56" stroke="#8a7550" stroke-width="5" stroke-linecap="round"/>
-  <line id="pBed" x1="34" y1="40" x2="126" y2="40" stroke="#5cd6a8" stroke-width="8" stroke-linecap="round"/>
+  <line id="pBed" x1="34" y1="40" x2="126" y2="40" stroke="#318574" stroke-width="8" stroke-linecap="round"/>
 </svg><div class="phint" id="pHint">W / S to level out</div></div>
 <div id="timer"></div>
 <div id="touch">
@@ -246,7 +255,7 @@
 </div></div>
 <div id="pause" class="overlay hidden"><div><h2>Paused</h2><button id="resumeBtn">Resume</button></div></div>
 <div id="end" class="overlay hidden"><div><h2>Time!</h2><p id="endScore"></p><p id="endBest"></p><button id="againBtn">▶ Another run</button></div></div>
-<div id="cleared" class="overlay hidden"><div><h2 style="color:#ffd34d">ALL CHALLENGES COMPLETE!</h2><p id="clearedSub"></p><div class="menurow"><button id="nextLevelBtn">▶ Next Level</button><button id="replayBtn" style="background:#2b3340">↺ Watch Replay</button><button id="keepPlayingBtn" style="background:#2b3340">Keep Playing</button></div></div></div>
+<div id="cleared" class="overlay hidden"><div><h2 style="color:#a76b21">ALL CHALLENGES COMPLETE!</h2><p id="clearedSub"></p><div class="menurow"><button id="nextLevelBtn">▶ Next Level</button><button id="replayBtn" style="background:#dceaf0">↺ Watch Replay</button><button id="keepPlayingBtn" style="background:#dceaf0">Keep Playing</button></div></div></div>
 <div id="ui">
   <div class="row">
     <button id="riderBtn">Rider (R)</button>
@@ -272,7 +281,9 @@ renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true;
 document.body.appendChild(renderer.domElement);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 
-const {hemi,sun}=GurneyArt.addLighting(THREE,scene);
+const {hemi,sun,fill}=GurneyArt.addLighting(THREE,scene);
+// Soft warm bounce keeps shaded scenery readable like the mascot artwork.
+hemi.groundColor.set(0xb8b2a0);fill.color.set(0xfff4de);fill.intensity=.8;
 sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-120,right:120,top:120,bottom:-120,far:400}); scene.add(sun);
 
 // mesh helpers
@@ -823,9 +834,9 @@ function scatter(make,n,r,mass,range,avoid=8){for(let i=0;i<n;i++){let x,z;
 
 // ---------- levels ----------
 function buildGarage(){
-  scene.background=new THREE.Color(0x14171c);scene.fog=new THREE.Fog(0x14171c,50,150);hemi.intensity=.5;
-  const con=new THREE.MeshStandardMaterial({color:0x6b7280,roughness:.95});
-  const top=new THREE.MeshStandardMaterial({color:0x4c5562,roughness:.95});
+  scene.background=new THREE.Color(0xb4ced8);scene.fog=new THREE.Fog(0xb4ced8,50,150);hemi.intensity=.5;
+  const con=new THREE.MeshStandardMaterial({color:0xb5c1c5,roughness:.95});
+  const top=new THREE.MeshStandardMaterial({color:0x8ca6b1,roughness:.95});
   const white=new THREE.MeshStandardMaterial({color:0xcfcfcf});
   const floors=[0,5,10];
   for(let i=0;i<3;i++){const cx=i*45,fy=floors[i];
@@ -853,7 +864,7 @@ function buildGarage(){
 }
 function buildLot(){
   scene.background=new THREE.Color(0x9fb6cf);scene.fog=new THREE.Fog(0x9fb6cf,150,400);hemi.intensity=.8;
-  slab(300,.4,300,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x33373d,roughness:1}),{drive:true});
+  slab(300,.4,300,0,-0.2,0,new THREE.MeshStandardMaterial({color:0x758993,roughness:1}),{drive:true});
   const white=new THREE.MeshStandardMaterial({color:0xdddddd});
   for(let r=-3;r<=3;r++)for(let s=-6;s<=6;s++){const m=box(.15,.02,5,white);m.position.set(s*3,.02,r*22-7);world.add(m);}
   for(let r=-3;r<=3;r++)for(let s=-5;s<=5;s++){if(Math.abs(r)<1&&Math.abs(s)<2)continue;if(Math.random()<0.55)continue;
@@ -1379,7 +1390,7 @@ const LEVELS={garage:buildGarage,lot:buildLot,park:buildPark,niagara:buildNiagar
 const LOC={garage:'Parking Garage',lot:'Supermarket Lot',park:'Public Park',niagara:'Niagara Falls',pyramids:'The Pyramids',gym:'Commercial Gym',farm:'The Farm',vegas:'Las Vegas',ocean:'Ocean Floor',xp:'Bliss Meadow',highway:'12-Lane Highway',ohio:'Rural Ohio',stadium:'Soccer Stadium',trampoline:'Trampoline Park',minefield:'Minefield',skatepark:'Skate Park',coaster:'Coaster Park',hospital:'St. Mercy General',space:'Cape Gurney'};
 // difficulty 1..4 per world; the progression only ever ramps up
 const DIFF={park:1,niagara:1,xp:1,garage:2,lot:2,pyramids:2,gym:2,farm:2,stadium:2,hospital:2,minefield:2,vegas:3,ocean:3,highway:3,ohio:3,trampoline:3,space:3,skatepark:4,coaster:4};
-const DLABEL={1:['EASY','#5cd6a8'],2:['MEDIUM','#ffd34d'],3:['HARD','#ff9f43'],4:['EXTREME','#ff5a5a']};
+const DLABEL={1:['EASY','#318574'],2:['MEDIUM','#a76b21'],3:['HARD','#b55d28'],4:['EXTREME','#c34d43']};
 const PROGRESSION=Object.keys(LEVELS).slice().sort((a,b)=>(DIFF[a]||2)-(DIFF[b]||2)||Object.keys(LEVELS).indexOf(a)-Object.keys(LEVELS).indexOf(b));
 let levelCleared=false;
 function showCleared(){paused=true;mayhem+=500;
@@ -1390,7 +1401,7 @@ function showCleared(){paused=true;mayhem+=500;
   const i=PROGRESSION.indexOf(current),nx=PROGRESSION[(i+1)%PROGRESSION.length],dl=DLABEL[DIFF[nx]||2];
   const row='\u2605'.repeat(stars)+'\u2606'.repeat(4-stars);
   document.getElementById('clearedSub').innerHTML=
-    '<div style="font-size:44px;color:#ffd34d;letter-spacing:5px;margin:2px 0 8px;text-shadow:0 2px 8px #000">'+row+'</div>'+
+    '<div style="font-size:44px;color:#a76b21;letter-spacing:5px;margin:2px 0 8px;text-shadow:0 2px 8px #000">'+row+'</div>'+
     '<div style="font-size:15px;line-height:1.8;text-align:left;display:inline-block">'+
       '\u2705 All challenges<br>'+
       (clean?'\u2705 Minimal injuries':'\u274c Minimal injuries <span style=opacity:.6>(took '+Math.round(runDamage)+' dmg)</span>')+'<br>'+
@@ -1463,7 +1474,7 @@ function updatePitchGauge(){
   const ahead=groundAt(gurney.position.x+fx*D,gurney.position.z+fz*D,gurney.position.y+4);
   const slope=(below===null||ahead===null)?0:Math.atan((ahead-below)/D);
   const err=Math.abs(gurney.rotation.x-slope);
-  const col=err<0.26?'#5cd6a8':err<0.7?'#ffd34d':'#ff5a5a';
+  const col=err<0.26?'#318574':err<0.7?'#a76b21':'#c34d43';
   pBed.setAttribute('stroke',col);
   pBed.setAttribute('transform','rotate('+(-gurney.rotation.x*57.3)+' 80 40)');   // bed tilts with your pitch
   pGround.setAttribute('transform','rotate('+(-slope*57.3)+' 80 56)');            // ground shows the target angle
@@ -1554,7 +1565,7 @@ function skyTex(top,base,theme,night=false){
 function applySky(){
   const b=scene.background;if(!b||!b.isColor)return;
   if(activeSkyTexture){activeSkyTexture.dispose();activeSkyTexture=null;}
-  const base=b.clone(),top=base.clone().multiplyScalar(.5);top.b=Math.min(1,top.b*1.2+.03);
+  const base=b.clone(),top=base.clone().multiplyScalar(.78);top.b=Math.min(1,top.b*1.2+.03);
   activeSkyTexture=skyTex(top,base,SKY_HORIZONS[current],current==='vegas');
   scene.background=activeSkyTexture;
 }
@@ -1607,7 +1618,7 @@ function stepReplay(dt){
 function endReplay(){ replay=null; paused=true;
   document.getElementById('replaybadge').classList.remove('show');
   document.getElementById('cleared').classList.remove('hidden'); }
-function loadLevel(name){clearWorld();spawnHeading=0;spawn=LEVELS[name]();current=name;respawn();applyRider();
+function loadLevel(name){clearWorld();spawnHeading=0;spawn=LEVELS[name]();current=name;hemi.intensity=Math.max(.8,hemi.intensity);respawn();applyRider();
   if(helmetRef)helmetRef.visible=(name==='minefield');
   comboCount=0;comboTimer=0;airTime=0;shake=0;particles=[];setChallenges(name);
   document.getElementById('loc').textContent=LOC[name];
@@ -1717,7 +1728,7 @@ function ecgWave(t){
   if(t<0.32)return -0.35+(t-0.26)/0.06*0.35;
   if(t<0.50)return Math.sin((t-0.32)/0.18*Math.PI)*0.26; // T
   return 0;}
-const COND=[[75,'STABLE','#5cd6a8'],[45,'GUARDED','#ffd34d'],[20,'SERIOUS','#ff9f43'],[1,'CRITICAL','#ff5a5a'],[-1,'ASYSTOLE','#ff2d2d']];
+const COND=[[75,'STABLE','#318574'],[45,'GUARDED','#a76b21'],[20,'SERIOUS','#b55d28'],[1,'CRITICAL','#c34d43'],[-1,'ASYSTOLE','#ff2d2d']];
 function drawVitals(dt){
   for(const inj of injuries)inj.mesh.visible=(condition<inj.showBelow);
   const c=Math.max(0,condition);
@@ -1729,7 +1740,7 @@ function drawVitals(dt){
     sys=Math.round(60+c*0.6); dia=Math.round(40+c*0.4); o2=Math.round(69+c*0.3);
   }
   adrenaline=Math.max(0,adrenaline-dt*0.55);
-  let label='STABLE',col='#5cd6a8';
+  let label='STABLE',col='#318574';
   if(codeBlue>0){vHR.textContent='--';vBP.textContent='V-FIB';vO2.textContent=Math.max(40,o2-20);
     for(const el of[vHR,vBP,vO2])el.style.color='#ff2d2d';
     vStatus.textContent='CODE BLUE '+Math.ceil(codeBlue)+'s';vStatus.style.color='#fff';vStatus.style.background='#ff2d2daa';
@@ -2129,7 +2140,7 @@ function openMenu(){gameStarted=false;paused=false;
 document.getElementById('playBtn').onclick=startGame;
 // ---- patient intake ----
 const charGrid=document.getElementById('charGrid');
-function riskColor(r){return r==='EXTREME'?'#ff5a5a':r==='NORMAL'?'#ffd34d':'#5cd6a8';}
+function riskColor(r){return r==='EXTREME'?'#c34d43':r==='NORMAL'?'#a76b21':'#318574';}
 function buildCharCards(){charGrid.innerHTML='';
   CHARS.forEach(c=>{const d=document.createElement('div');d.className='charcard'+(c===patient.char?' sel':'');
     d.innerHTML='<div class="emoji">'+c.emoji+'</div><div class="cname">'+c.name+'</div><div class="cflavor">'+c.flavor+'</div><div class="crisk" style="color:'+riskColor(c.risk)+'">INJURY RISK '+c.risk+'</div>';
@@ -2172,7 +2183,7 @@ function buildMenu(){                                             // rebuilt on 
   for(const key of PROGRESSION){                                  // menu doubles as a difficulty ladder, easy -> hard
     const b=document.createElement('button');const dl=DLABEL[DIFF[key]||2];
     const rank=+(localStorage.getItem('gurney_rank_'+key)||0);
-    const earned=rank?'<br><span style="font-size:11px;letter-spacing:2px;color:#ffd34d">'+'\u2605'.repeat(rank)+'<span style="color:#3d4a5c">'+'\u2606'.repeat(4-rank)+'</span></span>':'<br><span style="font-size:11px;color:#3d4a5c">\u2606\u2606\u2606\u2606</span>';
+    const earned=rank?'<br><span style="font-size:11px;letter-spacing:2px;color:#a76b21">'+'\u2605'.repeat(rank)+'<span style="color:#3d4a5c">'+'\u2606'.repeat(4-rank)+'</span></span>':'<br><span style="font-size:11px;color:#3d4a5c">\u2606\u2606\u2606\u2606</span>';
     b.innerHTML=LOC[key]+'<br><span class="level-difficulty" style="font-size:10px;font-weight:700;letter-spacing:1px;color:'+dl[1]+'">'+dl[0]+'</span>'+earned;
     b.onclick=()=>{if(requestLevel(key))startGame();};
     menuGrid.appendChild(b);
