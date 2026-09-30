@@ -91,7 +91,7 @@
   .charcard{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 8px;background:rgba(18,28,32,.6);transition:all .12s;text-align:center}
   .charcard:hover{background:rgba(34,50,55,.85)}
   .charcard.sel{border-color:var(--telem);background:rgba(92,214,168,.12);box-shadow:0 0 20px rgba(92,214,168,.22)}
-  .charcard .emoji{font-size:40px;line-height:1}
+  .charcard .portrait{display:block;width:76px;height:76px;object-fit:contain;margin:0 auto}
   .charcard .cname{font-family:var(--sans);font-weight:800;font-size:14px;margin:7px 0 4px}
   .charcard .cflavor{font-family:var(--mono);font-size:9.5px;color:var(--muted);line-height:1.45;min-height:40px}
   .charcard .crisk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.8px;margin-top:6px}
@@ -116,7 +116,7 @@
     #title .menurow button{min-height:44px;padding:9px 20px;font-size:15px}
     #menuLevels{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;width:100%;align-content:start;grid-auto-rows:minmax(64px,max-content);margin:8px 0;gap:5px} #menuLevels button{padding:9px 6px;min-height:44px}
     #intake .form{padding:14px 20px} #charGrid{margin-bottom:10px}
-    .charcard{padding:8px} .charcard .emoji{font-size:28px} #nameField{font-size:16px;margin-bottom:10px}
+    .charcard{padding:8px} .charcard .portrait{width:52px;height:52px} #nameField{font-size:16px;margin-bottom:10px}
     #timer{font-size:22px} #toast{font-size:16px}
   }
   /* Flat print colors, a comic illustration, and one obvious primary action. */
@@ -241,7 +241,7 @@
   <header class="game-brand">
     <h1>GURNEY<span>JOURNEY</span></h1>
     <img class="brand-art" src="assets/gurney-journey-art.png" alt="The same blob patient and gurney used in the game">
-    <p>One hospital bed. Zero brakes.</p>
+    <p>Discharged at full speed.</p>
   </header>
   <div class="level-heading"><div id="admitted" class="sub"></div><button id="moreLevelsBtn" aria-label="Scroll level list">More levels ↓</button></div>
   <div id="menuLevels"></div>
@@ -2161,7 +2161,7 @@ const charGrid=document.getElementById('charGrid');
 function riskColor(r){return r==='EXTREME'?'#c34d43':r==='NORMAL'?'#a76b21':'#318574';}
 function buildCharCards(){charGrid.innerHTML='';
   CHARS.forEach(c=>{const d=document.createElement('div');d.className='charcard'+(c===patient.char?' sel':'');
-    d.innerHTML='<div class="emoji">'+c.emoji+'</div><div class="cname">'+c.name+'</div><div class="cflavor">'+c.flavor+'</div><div class="crisk" style="color:'+riskColor(c.risk)+'">INJURY RISK '+c.risk+'</div>';
+    d.innerHTML='<img class="portrait" src="assets/patient-'+c.id+'.png" alt="'+c.name+' portrait"><div class="cname">'+c.name+'</div><div class="cflavor">'+c.flavor+'</div><div class="crisk" style="color:'+riskColor(c.risk)+'">INJURY RISK '+c.risk+'</div>';
     d.onclick=()=>{applyPatient(c);[...charGrid.children].forEach(x=>x.classList.remove('sel'));d.classList.add('sel');};
     charGrid.appendChild(d);});}
 buildCharCards(); applyPatient(CHARS[0]);

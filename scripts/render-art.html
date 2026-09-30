@@ -2,14 +2,18 @@
 <script src="../vendor/three.min.js"></script><script src="../assets/mascot.js"></script><script>
 (async()=>{
   const output=document.getElementById('previews');
-  for(const mode of ['title','icon']){
+  const skins={'patient-florida':0xf0c7a5,'patient-geezer':0xe9d1b9,'patient-alien':0x8fd88f,'patient-dummy':0xf0c020};
+  for(const mode of ['title','icon',...Object.keys(skins)]){
     const scene=new THREE.Scene();
-    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:mode==='title',preserveDrawingBuffer:true});
-    renderer.setSize(1024,1024);renderer.setPixelRatio(1);renderer.shadowMap.enabled=true;
+    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:mode!=='icon',preserveDrawingBuffer:true});
+    renderer.setSize(skins[mode]?256:1024,skins[mode]?256:1024);renderer.setPixelRatio(1);renderer.shadowMap.enabled=true;
     if(mode==='icon')scene.background=new THREE.Color(0xfff4de);
     const {sun}=GurneyArt.addLighting(THREE,scene);sun.shadow.mapSize.set(1024,1024);
     let camera;
-    if(mode==='title'){
+    if(skins[mode]){
+      scene.add(GurneyArt.createPatient(THREE,skins[mode]));
+      camera=new THREE.OrthographicCamera(-.64,.64,.64,-.64,.1,40);camera.position.set(.35,1.57,5);camera.lookAt(0,1.48,0);
+    }else if(mode==='title'){
       scene.add(GurneyArt.createBed(THREE));
       scene.add(GurneyArt.createRider(THREE,true));
       camera=new THREE.OrthographicCamera(-2.6,2.6,2.6,-2.6,.1,40);camera.position.set(3.4,4.3,6);camera.lookAt(0,1.5,0);
@@ -22,6 +26,6 @@
     const response=await fetch('/render/'+mode,{method:'POST',headers:{'Content-Type':'image/png'},body:png});
     if(!response.ok)throw new Error('Could not save '+mode);
   }
-  document.getElementById('status').textContent='Saved title artwork and app icon from the exact models used in gameplay.';
+  document.getElementById('status').textContent='Saved title artwork, app icon, and four patient headshots from the game models.';
 })().catch(error=>{document.getElementById('status').textContent=error.stack;});
 </script></body></html>

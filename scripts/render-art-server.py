@@ -3,12 +3,14 @@
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 import os
+import sys
 ROOT=Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 OUTPUTS={
  '/render/title':ROOT/'assets/gurney-journey-art.png',
  '/render/icon':ROOT/'assets/gurney-journey-icon.png',
 }
+OUTPUTS.update({'/render/'+name:ROOT/('assets/'+name+'.png') for name in ['patient-florida','patient-geezer','patient-alien','patient-dummy']})
 class Handler(SimpleHTTPRequestHandler):
  def do_POST(self):
   if self.path not in OUTPUTS:
@@ -21,4 +23,4 @@ class Handler(SimpleHTTPRequestHandler):
    self.send_error(400);return
   OUTPUTS[self.path].write_bytes(data)
   self.send_response(200);self.end_headers();self.wfile.write(b'Saved')
-ThreadingHTTPServer(('127.0.0.1',8765),Handler).serve_forever()
+ThreadingHTTPServer(('127.0.0.1',int(sys.argv[1]) if len(sys.argv)>1 else 8765),Handler).serve_forever()
