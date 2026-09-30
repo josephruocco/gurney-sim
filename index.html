@@ -105,7 +105,14 @@
     .overlay>div{margin:auto;flex-shrink:0;width:100%}
     .overlay h1{font-size:42px;letter-spacing:8px} .overlay h2{font-size:26px}
     .overlay p{font-size:13px;margin:4px 0}
-    #menuLevels{margin:8px 0;gap:5px} #menuLevels button{padding:9px 6px;min-height:44px}
+    #title{overflow:hidden}
+    #title>div{height:100%;min-height:0;margin:0 auto}
+    #title>div> :not(#menuLevels){flex-shrink:0}
+    #title h1{font-size:clamp(25px,7vh,42px);line-height:1.1}
+    #title .sub{font-size:9px;letter-spacing:2px}
+    #title .menurow{margin-top:4px;gap:8px}
+    #title .menurow button{min-height:44px;padding:9px 20px;font-size:15px}
+    #menuLevels{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;width:100%;align-content:start;grid-auto-rows:minmax(64px,max-content);margin:8px 0;gap:5px} #menuLevels button{padding:9px 6px;min-height:44px}
     #intake .form{padding:14px 20px} #charGrid{margin-bottom:10px}
     .charcard{padding:8px} .charcard .emoji{font-size:28px} #nameField{font-size:16px;margin-bottom:10px}
     #timer{font-size:22px} #toast{font-size:16px}
