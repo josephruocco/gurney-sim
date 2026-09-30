@@ -291,6 +291,24 @@ sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-120,ri
 
 // mesh helpers
 const box=(w,h,d,m)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.castShadow=true;return b;};
+// Rounded decorative forms retain their original outer dimensions.
+// Driving surfaces still use the plain box helper for predictable contacts.
+function softBox(w,h,d,m){
+  const radius=Math.min(w,h,d)*.22;
+  const geometry=new THREE.BoxGeometry(2,2,2,4,4,4);
+  const positions=geometry.attributes.position,normals=geometry.attributes.normal;
+  const half=[w/2,h/2,d/2];
+  for(let i=0;i<positions.count;i++){
+    const v=[positions.getX(i),positions.getY(i),positions.getZ(i)];
+    const core=v.map(x=>Math.max(-.5,Math.min(.5,x)));
+    const n=new THREE.Vector3(...v.map((x,j)=>x-core[j])).normalize();
+    const axes=[n.x,n.y,n.z];
+    positions.setXYZ(i,...core.map((x,j)=>x*2*(half[j]-radius)+axes[j]*radius));
+    normals.setXYZ(i,n.x,n.y,n.z);
+  }
+  const mesh=new THREE.Mesh(geometry,m);mesh.castShadow=true;return mesh;
+}
+
 const cyl=(rt,rb,h,m,seg=16)=>{const c=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m);c.castShadow=true;return c;};
 const ball=(r,m)=>{const s=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),m);s.castShadow=true;return s;};
 const cone=(r,h,m,seg=16)=>{const c=new THREE.Mesh(new THREE.ConeGeometry(r,h,seg),m);c.castShadow=true;return c;};
@@ -565,7 +583,7 @@ function addBounce(x,z,w,d){const pad=new THREE.Mesh(new THREE.PlaneGeometry(w,d
   for(const dz of[-d/2,d/2]){const s=box(w,.04,.15,seam);s.position.set(x,0.07,z+dz);world.add(s);}
   bounces.push({x1:x-w/2,x2:x+w/2,z1:z-d/2,z2:z+d/2});}
 function wallLine(x1,z1,x2,z2,fy){const len=Math.hypot(x2-x1,z2-z1),cx=(x1+x2)/2,cz=(z1+z2)/2,ang=Math.atan2(z2-z1,x2-x1);
-  const w=box(len,1.4,0.5,new THREE.MeshStandardMaterial({color:0x8a9099,metalness:.3,roughness:.6}));w.position.set(cx,fy+0.7,cz);w.rotation.y=-ang;world.add(w);
+  const w=softBox(len,1.4,0.5,new THREE.MeshStandardMaterial({color:0x8a9099,metalness:.3,roughness:.6}));w.position.set(cx,fy+0.7,cz);w.rotation.y=-ang;world.add(w);
   const n=Math.ceil(len/3);for(let i=0;i<=n;i++){const t=i/n;solids.push({position:new THREE.Vector3(x1+(x2-x1)*t,0,z1+(z2-z1)*t),radius:1.6});}}
 function colliderLine(x1,z1,x2,z2){const n=Math.ceil(Math.hypot(x2-x1,z2-z1)/3);for(let i=0;i<=n;i++){const t=i/n;solids.push({position:new THREE.Vector3(x1+(x2-x1)*t,0,z1+(z2-z1)*t),radius:1.8});}} // colliders block at all heights (xz only)
 // barbed-wire fence: each post is planted on the terrain and the strands sag between them,
@@ -595,9 +613,9 @@ function trashCan(){const g=new THREE.Group();const m=new THREE.MeshStandardMate
 function bottle(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0x2f8f4a,roughness:.2,metalness:.1});
   const b=cyl(.13,.16,.45,m,10);b.position.y=.22;g.add(b);const neck=cyl(.07,.1,.18,m,8);neck.position.y=.52;g.add(neck);return g;}
 function debris(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0x8a8470,roughness:.9});
-  const b=box(.4,.25,.3,m);b.position.y=.13;b.rotation.y=Math.random();g.add(b);return g;}
+  const b=softBox(.4,.25,.3,m);b.position.y=.13;b.rotation.y=Math.random();g.add(b);return g;}
 function trafficCone(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0xff6a1a,roughness:.6});
-  const c=cone(.32,.9,m,16);c.position.y=.5;g.add(c);const base=box(.7,.08,.7,m);base.position.y=.04;g.add(base);
+  const c=cone(.32,.9,m,16);c.position.y=.5;g.add(c);const base=softBox(.7,.08,.7,m);base.position.y=.04;g.add(base);
   const band=cyl(.22,.26,.12,new THREE.MeshStandardMaterial({color:0xffffff}),16);band.position.y=.55;g.add(band);return g;}
 function barrel(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0x7a4a22,roughness:.7});
   const b=cyl(.55,.55,1.4,m,18);b.position.y=.7;g.add(b);
@@ -606,7 +624,7 @@ function camel(){const g=new THREE.Group();const m=new THREE.MeshStandardMateria
   const body=cap(.55,1.1,m);body.rotation.z=Math.PI/2;body.position.set(0,1.7,0);g.add(body);
   for(const z of[-.35,.35]){const hump=ball(.45,m);hump.position.set(0,2.1,z);hump.scale.set(1,.8,1);g.add(hump);}
   const neck=cyl(.22,.3,1.1,m,10);neck.position.set(0,2.4,-1);neck.rotation.x=-.5;g.add(neck);
-  const head=box(.35,.4,.7,m);head.position.set(0,3,-1.5);g.add(head);
+  const head=softBox(.35,.4,.7,m);head.position.set(0,3,-1.5);g.add(head);
   for(const sx of[-.4,.4])for(const sz of[-.8,.8]){const leg=cyl(.13,.13,1.5,m,8);leg.position.set(sx,.75,sz);g.add(leg);}
   return g;}
 function canadian(){const g=new THREE.Group();const red=new THREE.MeshStandardMaterial({color:0xc8102e});
@@ -626,7 +644,7 @@ function strollerLady(){const g=new THREE.Group();const coat=new THREE.MeshStand
   for(const s of[-1,1]){const a=cap(.08,.45,coat);a.position.set(s*.28,1.45,.15);a.rotation.x=-.7;g.add(a);}
   // stroller in front
   const fm=new THREE.MeshStandardMaterial({color:0x37404a});
-  const basket=box(.6,.5,.8,new THREE.MeshStandardMaterial({color:0x7aa0c8}));basket.position.set(0,1,-.3);g.add(basket);
+  const basket=softBox(.6,.5,.8,new THREE.MeshStandardMaterial({color:0x7aa0c8}));basket.position.set(0,1,-.3);g.add(basket);
   const baby=ball(.15,SKIN);baby.position.set(0,1.3,-.3);g.add(baby);
   for(const sx of[-.32,.32])for(const sz of[-.65,.05]){const w=cyl(.13,.13,.08,new THREE.MeshStandardMaterial({color:0x111}),12);w.rotation.z=Math.PI/2;w.position.set(sx,.13,sz);g.add(w);}
   const handle=cyl(.04,.04,.7,fm,8);handle.position.set(0,1.2,.15);handle.rotation.x=-.5;g.add(handle);
@@ -661,24 +679,24 @@ function kettlebell(){const g=new THREE.Group();const m=new THREE.MeshStandardMa
   const b=ball(.28,m);b.position.y=.3;b.scale.set(1,.9,1);g.add(b);
   const h=new THREE.Mesh(new THREE.TorusGeometry(.14,.04,8,16),m);h.castShadow=true;h.position.y=.56;g.add(h);return g;}
 function weightBench(){const g=new THREE.Group();const pad=new THREE.MeshStandardMaterial({color:0x8a1f1f,roughness:.7});const fm=new THREE.MeshStandardMaterial({color:0x2a2e34,metalness:.4});
-  const seat=box(.6,.2,1.8,pad);seat.position.y=.55;g.add(seat);
-  for(const sz of[-.7,.7]){const l=box(.12,.55,.12,fm);l.position.set(0,.27,sz);g.add(l);}
-  for(const sx of[-.35,.35]){const post=box(.08,1.1,.08,fm);post.position.set(sx,.9,-.9);g.add(post);}
+  const seat=softBox(.6,.2,1.8,pad);seat.position.y=.55;g.add(seat);
+  for(const sz of[-.7,.7]){const l=softBox(.12,.55,.12,fm);l.position.set(0,.27,sz);g.add(l);}
+  for(const sx of[-.35,.35]){const post=softBox(.08,1.1,.08,fm);post.position.set(sx,.9,-.9);g.add(post);}
   const bar=cyl(.04,.04,1.5,new THREE.MeshStandardMaterial({color:0xaab0b8,metalness:.7}),8);bar.rotation.z=Math.PI/2;bar.position.set(0,1.45,-.9);g.add(bar);return g;}
 function shoppingCart(){const g=new THREE.Group();
   const basket=new THREE.Mesh(new THREE.BoxGeometry(.8,.6,1.1),new THREE.MeshStandardMaterial({color:0xc4c8ce,metalness:.5,roughness:.4,wireframe:true}));basket.position.set(0,.9,-.1);g.add(basket);
   const handle=cyl(.035,.035,.82,new THREE.MeshStandardMaterial({color:0xc8102e}),6);handle.rotation.z=Math.PI/2;handle.position.set(0,1.2,.5);g.add(handle);
   for(const sx of[-.34,.34])for(const sz of[-.55,.55]){const w=cyl(.1,.1,.06,new THREE.MeshStandardMaterial({color:0x222}),10);w.rotation.z=Math.PI/2;w.position.set(sx,.1,sz);g.add(w);}return g;}
-function parkedCar(){const cols=[0x9b3b3b,0x2e4a7a,0xb0a437,0x3a6b48,0x555a61,0x7a4ea0];
+function parkedCar(){const cols=[0xd98670,0x83b5c9,0xe8bf74,0x91b49b,0x9faeb5,0xb4a4c6];
   const cm=new THREE.MeshStandardMaterial({color:cols[(Math.random()*cols.length)|0],metalness:.3,roughness:.5});
-  const g=new THREE.Group();const b=box(1.8,.9,4,cm);b.position.y=.7;g.add(b);const cab=box(1.6,.7,2.2,cm);cab.position.set(0,1.35,-.1);g.add(cab);
+  const g=new THREE.Group();const b=softBox(1.8,.9,4,cm);b.position.y=.7;g.add(b);const cab=softBox(1.6,.7,2.2,cm);cab.position.set(0,1.35,-.1);g.add(cab);
   for(const sx of[-.8,.8])for(const sz of[-1.3,1.3]){const w=cyl(.35,.35,.2,new THREE.MeshStandardMaterial({color:0x111}),12);w.rotation.z=Math.PI/2;w.position.set(sx,.35,sz);g.add(w);}return g;}
 function cow(){const g=new THREE.Group();const w=new THREE.MeshStandardMaterial({color:0xf2f0ec,roughness:.85});const blk=new THREE.MeshStandardMaterial({color:0x2b2b2b});
-  const body=box(1.1,1.1,2.2,w);body.position.y=1.5;g.add(body);
+  const body=softBox(1.1,1.1,2.2,w);body.position.y=1.5;g.add(body);
   for(let i=0;i<4;i++){const s=ball(.3,blk);s.position.set(Math.random()-.5,1.75,Math.random()*1.6-.8);s.scale.set(1,.35,1.2);g.add(s);}
-  const head=box(.7,.7,.8,w);head.position.set(0,1.7,-1.4);g.add(head);
-  const snout=box(.55,.45,.3,new THREE.MeshStandardMaterial({color:0xe0a8a8}));snout.position.set(0,1.55,-1.75);g.add(snout);
-  for(const sx of[-.35,.35]){const ear=box(.25,.15,.1,w);ear.position.set(sx*1.4,1.95,-1.35);g.add(ear);}
+  const head=softBox(.7,.7,.8,w);head.position.set(0,1.7,-1.4);g.add(head);
+  const snout=softBox(.55,.45,.3,new THREE.MeshStandardMaterial({color:0xe0a8a8}));snout.position.set(0,1.55,-1.75);g.add(snout);
+  for(const sx of[-.35,.35]){const ear=softBox(.25,.15,.1,w);ear.position.set(sx*1.4,1.95,-1.35);g.add(ear);}
   for(const sx of[-.35,.35])for(const sz of[-.7,.7]){const l=cyl(.13,.13,1,blk,8);l.position.set(sx,.5,sz);g.add(l);}return g;}
 function hayBale(){const g=new THREE.Group();const m=new THREE.MeshStandardMaterial({color:0xc9a23a,roughness:1});
   const b=cyl(.8,.8,1.5,m,14);b.rotation.z=Math.PI/2;b.position.y=.8;g.add(b);return g;}
