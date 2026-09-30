@@ -1,3 +1,6 @@
 .DS_Store
 .netlify/
 *.zip
+DerivedData/
+*.xcuserstate
+xcuserdata/

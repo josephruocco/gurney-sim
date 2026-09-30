@@ -186,11 +186,8 @@
 </div>
 <div id="help">W/S drive · A/D steer · Space brake · Shift boost · in air: W/S to land level · Esc menu</div>
 
-<script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
-</script>
-<script type="module">
-import * as THREE from 'three';
+<script src="three.min.js"></script>
+<script>
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 900);
