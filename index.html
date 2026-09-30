@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Gurney Simulator</title>
+<title>Gurney Journey</title>
+<link rel="icon" type="image/svg+xml" href="assets/gurney-journey.svg">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
   :root{
     --telem:#5cd6a8; --amber:#ffd34d; --red:#ff5a5a;
@@ -117,6 +119,48 @@
     .charcard{padding:8px} .charcard .emoji{font-size:28px} #nameField{font-size:16px;margin-bottom:10px}
     #timer{font-size:22px} #toast{font-size:16px}
   }
+  /* Gurney Journey: flat vector mark, condensed type, hospital wayfinding. */
+  #title{background:#10272b;text-align:left;overflow:hidden;padding:clamp(16px,4vh,40px) max(24px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left))}
+  #title>div{display:grid;grid-template-columns:minmax(210px,.85fr) minmax(0,1.65fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:clamp(24px,5vw,72px);row-gap:12px;width:100%;max-width:1120px;height:100%;max-height:700px;min-height:0;margin:auto;align-items:stretch}
+  #title .game-brand{grid-column:1;grid-row:1/4;align-self:center;min-width:0}
+  #title .brand-mark{display:block;width:76px;height:76px;margin:0 0 12px -8px}
+  #title .brand-kicker{font:700 8px/1.5 var(--mono);letter-spacing:1.4px;color:#91a7a5;margin-bottom:12px}
+  #title h1{font-family:'Arial Narrow','Helvetica Neue',Arial,sans-serif;font-size:clamp(34px,5.7vw,72px);font-weight:900;font-style:italic;letter-spacing:-2px;line-height:.9;color:#eeeadd;text-shadow:none;padding:0;margin:0 0 18px}
+  #title h1 span{color:#69d4aa}
+  #title .game-brand p{color:#becbc5;font-size:14px;line-height:1.5;margin:0;opacity:1}
+  #title .brand-ticket{margin-top:24px;border-top:1px solid #3b5251;padding-top:10px;color:#91a7a5;font:8px/1.6 var(--mono);letter-spacing:1px}
+  #title .brand-ticket b{display:block;color:#eeeadd;font-size:10px}
+  #title .level-heading{grid-column:2;grid-row:1;display:flex;gap:12px;align-items:center;justify-content:space-between;min-width:0}
+  #title #moreLevelsBtn{flex-shrink:0;margin:0;min-height:44px;padding:6px 8px;background:transparent;border-color:#476160;border-radius:4px;color:#69d4aa;font:10px var(--mono)}
+  #title #admitted{margin:0!important;align-self:end;font-size:9px;line-height:1.5;letter-spacing:1px;color:#a6bab0!important;padding-bottom:8px;border-bottom:1px solid #3b5251}
+  #title #menuLevels{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(64px,max-content);gap:6px;align-content:start;width:100%;max-width:none;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;margin:0;padding-right:4px}
+  #title #menuLevels button{background:#193236;border:1px solid #365052;border-radius:4px;box-shadow:none;font-size:11px;color:#eeeadd;padding:8px 4px;min-height:64px}
+  #title #menuLevels button:hover{background:#28464a;border-color:#69d4aa}
+  #title .menurow{grid-column:2;grid-row:3;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:0}
+  #title .menurow button{margin:0;padding:10px 5px;min-height:44px;font-size:12px;border-radius:4px;box-shadow:none}
+  #title #playBtn{background:#69d4aa;color:#10272b}
+  #title #randomBtn,#title #newPatientBtn{background:transparent;color:#eeeadd;border-color:#476160}
+  #title .ctrl{display:none}
+  @media(max-height:450px){
+    #title>div{column-gap:24px;row-gap:8px}
+    #title .brand-mark{width:58px;height:58px;margin-bottom:6px}
+    #title .brand-kicker{margin-bottom:8px;font-size:7px}
+    #title h1{font-size:clamp(32px,5vw,48px);margin-bottom:12px}
+    #title .game-brand p{font-size:11px}
+    #title .brand-ticket{margin-top:12px;padding-top:8px;font-size:7px}
+  }
+  @media(max-width:600px) and (orientation:portrait){
+    #title>div{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr) auto;gap:12px}
+    #title .game-brand{grid-column:1;grid-row:1;display:grid;grid-template-columns:64px 1fr;gap:0 12px;align-items:center}
+    #title .brand-mark{grid-column:1;grid-row:1/3;width:64px;height:64px;margin:0}
+    #title .brand-kicker{grid-column:2;font-size:7px;margin-bottom:5px}
+    #title h1{grid-column:2;font-size:34px;margin:0;letter-spacing:-1px}
+    #title h1 br{display:none} #title h1 span::before{content:' '}
+    #title .game-brand p,#title .brand-ticket{display:none}
+    #title .level-heading{grid-column:1;grid-row:2}
+    #title #menuLevels{grid-column:1;grid-row:3}
+    #title .menurow{grid-column:1;grid-row:4}
+  }
 </style>
 </head>
 <body>
@@ -165,10 +209,14 @@
   </div>
 </div></div>
 <div id="title" class="overlay hidden"><div>
-  <div class="sub">Runaway Patient Simulator</div>
-  <h1>GURNEY</h1>
-  <p>Nineteen worlds. One hospital bed. Zero survival instinct.</p>
-  <div id="admitted" class="sub" style="color:var(--telem);margin-top:2px"></div>
+  <header class="game-brand">
+    <img class="brand-mark" src="assets/gurney-journey.svg" alt="A runaway hospital bed" width="88" height="88">
+    <div class="brand-kicker">ST. MERCY GENERAL / EST. CHAOS</div>
+    <h1>GURNEY<br><span>JOURNEY</span></h1>
+    <p>Nineteen worlds.<br>One hospital bed.<br>Zero survival instinct.</p>
+    <div class="brand-ticket">DISCHARGE STATUS <b>UNAUTHORIZED</b></div>
+  </header>
+  <div class="level-heading"><div id="admitted" class="sub"></div><button id="moreLevelsBtn" aria-label="Scroll level list">More levels ↓</button></div>
   <div id="menuLevels"></div>
   <div class="menurow">
     <button id="newPatientBtn">🏥 New Patient</button>
@@ -2051,6 +2099,14 @@ document.getElementById('chal').addEventListener('click',()=>{const el=document.
 document.getElementById('menuBtn').onclick=openMenu;
 // build the level picker on the menu from the level list itself, so new levels show up automatically
 const menuGrid=document.getElementById('menuLevels');
+const moreLevelsBtn=document.getElementById('moreLevelsBtn');
+moreLevelsBtn.onclick=()=>{
+  const atEnd=menuGrid.scrollTop+menuGrid.clientHeight>=menuGrid.scrollHeight-2;
+  menuGrid.scrollTo({top:atEnd?0:menuGrid.scrollTop+menuGrid.clientHeight*.8,behavior:'smooth'});
+};
+menuGrid.addEventListener('scroll',()=>{
+  moreLevelsBtn.textContent=menuGrid.scrollTop+menuGrid.clientHeight>=menuGrid.scrollHeight-2?'Back to top ↑':'More levels ↓';
+});
 function buildMenu(){                                             // rebuilt on open so earned stars stay current
   menuGrid.innerHTML='';
   for(const key of PROGRESSION){                                  // menu doubles as a difficulty ladder, easy -> hard

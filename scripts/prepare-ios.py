@@ -2,6 +2,7 @@
 """Create an offline page from the canonical game; no network or npm required."""
 from pathlib import Path
 import re
+import shutil
 import sys
 root = Path(__file__).resolve().parents[1]
 destination = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "ios/Gurney/Web"
@@ -13,3 +14,5 @@ if count != 1:
 (destination / "index.html").write_text(page)
 for name in ("three.min.js", "THREE-LICENSE.txt"):
     (destination / name).write_bytes((root / "vendor" / name).read_bytes())
+
+shutil.copytree(root / "assets", destination / "assets", dirs_exist_ok=True)
