@@ -1,0 +1,4 @@
+.godot/
+*.tmp
+*.translation
+tests/prototype-preview.png
