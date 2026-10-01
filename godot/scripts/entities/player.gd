@@ -8,6 +8,10 @@ var local_input := Vector2.ZERO
 var brake_strength := 0.0
 var target_gurney: RigidBody3D
 var body_mesh: MeshInstance3D
+var visual_root: Node3D
+var arms: Array[MeshInstance3D] = []
+var legs: Array[MeshInstance3D] = []
+var gait_time := 0.0
 
 func _material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
@@ -38,27 +42,29 @@ func setup(id: int, color: Color) -> void:
 	_build_body()
 
 func _build_body() -> void:
+	collision_layer = 4
+	collision_mask = 1
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.38
 	shape.height = 1.5
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	add_child(collision)
-	var visual := Node3D.new()
-	visual.name = "Character"
-	add_child(visual)
+	visual_root = Node3D.new()
+	visual_root.name = "Character"
+	add_child(visual_root)
 	var shirt := _material(player_color)
 	var skin := _material(Color("#f0c7a5"))
 	var ink := _material(Color("#253547"))
 	var hair := _material(Color("#554337"))
-	body_mesh = _sphere(visual, "Shirt", Vector3(0.92, 0.9, 0.76), Vector3(0, 0.0, 0), shirt)
-	_sphere(visual, "Head", Vector3(0.84, 0.9, 0.72), Vector3(0, 0.78, 0), skin)
+	body_mesh = _sphere(visual_root, "Shirt", Vector3(0.92, 0.9, 0.76), Vector3(0, 0.0, 0), shirt)
+	_sphere(visual_root, "Head", Vector3(0.84, 0.9, 0.72), Vector3(0, 0.78, 0), skin)
 	for side in [-1.0, 1.0]:
-		_sphere(visual, "Sleeve", Vector3(0.3, 0.38, 0.3), Vector3(side * 0.5, 0.12, 0), shirt)
-		_sphere(visual, "Arm", Vector3(0.2, 0.42, 0.2), Vector3(side * 0.56, -0.17, 0), skin)
-		_sphere(visual, "Leg", Vector3(0.22, 0.48, 0.25), Vector3(side * 0.22, -0.73, 0), skin)
-		_sphere(visual, "Eye", Vector3(0.11, 0.022, 0.026), Vector3(side * 0.17, 0.88, -0.37), ink)
-	_sphere(visual, "Nose", Vector3(0.22, 0.19, 0.19), Vector3(0, 0.73, -0.39), skin)
+		_sphere(visual_root, "Sleeve", Vector3(0.3, 0.38, 0.3), Vector3(side * 0.5, 0.12, 0), shirt)
+		arms.append(_sphere(visual_root, "Arm", Vector3(0.2, 0.42, 0.2), Vector3(side * 0.56, -0.17, 0), skin))
+		legs.append(_sphere(visual_root, "Leg", Vector3(0.22, 0.48, 0.25), Vector3(side * 0.22, -0.73, 0), skin))
+		_sphere(visual_root, "Eye", Vector3(0.11, 0.022, 0.026), Vector3(side * 0.17, 0.88, -0.37), ink)
+	_sphere(visual_root, "Nose", Vector3(0.22, 0.19, 0.19), Vector3(0, 0.73, -0.39), skin)
 	for x in [-0.22, -0.06, 0.11, 0.24]:
 		var strand := MeshInstance3D.new()
 		strand.name = "Hair"
@@ -70,21 +76,44 @@ func _build_body() -> void:
 		strand.position = Vector3(x, 1.28 - absf(x) * 0.35, 0)
 		strand.rotation_degrees.z = x * 45.0
 		strand.material_override = hair
-		visual.add_child(strand)
+		visual_root.add_child(strand)
+
+func apply_synced_pose(is_pushing: bool) -> void:
+	pushing = is_pushing
+	_apply_pose(0.0)
+
+func _apply_pose(delta: float) -> void:
+	gait_time += delta * (10.0 if pushing else 7.0)
+	var stride := sin(gait_time) * (0.42 if pushing else minf(0.32, Vector2(velocity.x, velocity.z).length() * 0.06))
+	for index in legs.size():
+		legs[index].rotation.x = stride * (-1.0 if index == 0 else 1.0)
+	for index in arms.size():
+		arms[index].rotation.x = -1.05 if pushing else -stride * (-1.0 if index == 0 else 1.0)
+		arms[index].position.z = -0.22 if pushing else 0.0
+	visual_root.rotation.x = -0.16 if pushing else 0.0
 
 func _physics_process(delta: float) -> void:
 	if !is_multiplayer_authority(): return
 	local_input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	brake_strength = Input.get_action_strength("brake")
-	var direction := Vector3(local_input.x, 0.0, local_input.y)
-	if direction.length_squared() > 0.02:
-		rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1.0, delta * 10.0))
-	velocity.x = move_toward(velocity.x, direction.x * 5.5, 18.0 * delta)
-	velocity.z = move_toward(velocity.z, direction.z * 5.5, 18.0 * delta)
-	velocity.y -= 20.0 * delta
-	move_and_slide()
 	if Input.is_action_just_pressed("interact"):
-		pushing = !pushing if target_gurney and global_position.distance_to(target_gurney.global_position) < 3.0 else false
+		pushing = !pushing if target_gurney and global_position.distance_to(target_gurney.global_position) < 3.2 else false
+	var direction := Vector3(local_input.x, 0.0, local_input.y)
+	if pushing and target_gurney:
+		var side := -0.82 if peer_id % 2 == 1 else 0.82
+		var row := float((peer_id - 1) / 2)
+		var attachment: Vector3 = target_gurney.global_transform * Vector3(side, 0.58, 2.0 + row * 0.55)
+		global_position = global_position.lerp(attachment, minf(1.0, delta * 12.0))
+		rotation.y = lerp_angle(rotation.y, target_gurney.rotation.y, minf(1.0, delta * 12.0))
+		velocity = Vector3.ZERO
+	elif direction.length_squared() > 0.02:
+		rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1.0, delta * 10.0))
+	if !pushing:
+		velocity.x = move_toward(velocity.x, direction.x * 5.5, 18.0 * delta)
+		velocity.z = move_toward(velocity.z, direction.z * 5.5, 18.0 * delta)
+		velocity.y -= 20.0 * delta
+		move_and_slide()
+	_apply_pose(delta)
 	_submit_input.rpc_id(1, local_input, brake_strength, pushing)
 
 @rpc("any_peer", "call_local", "unreliable", 1)
@@ -95,3 +124,4 @@ func _submit_input(input_vector: Vector2, braking: float, is_pushing: bool) -> v
 	var main := get_parent()
 	if main.players.has(sender) and sender != 1:
 		main.players[sender].global_position = global_position
+		main.players[sender].apply_synced_pose(is_pushing)

@@ -86,7 +86,7 @@ func _physics_process(delta: float) -> void:
 	sync_accumulator = 0.0
 	var player_states := {}
 	for id in players:
-		player_states[id] = players[id].global_transform
+		player_states[id] = {"transform": players[id].global_transform, "pushing": players[id].pushing}
 	_sync_world.rpc(gurney.global_transform, gurney.linear_velocity, gurney.angular_velocity, patient.global_transform, patient.linear_velocity, patient.angular_velocity, player_states)
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
@@ -103,7 +103,9 @@ func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_a
 	patient.angular_velocity = patient_angular
 	for id in player_states:
 		if players.has(id) and !players[id].is_multiplayer_authority():
-			players[id].global_transform = player_states[id]
+			var state: Dictionary = player_states[id]
+			players[id].global_transform = state["transform"]
+			players[id].apply_synced_pose(state["pushing"])
 
 func _update_hud(danger: float) -> void:
 	var local_patient: Vector3 = gurney.global_transform.affine_inverse() * patient.global_position

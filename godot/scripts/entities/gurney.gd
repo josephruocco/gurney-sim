@@ -11,6 +11,8 @@ var patient: RigidBody3D
 var last_state_tick := 0
 
 func _ready() -> void:
+	collision_layer = 2
+	collision_mask = 9
 	mass = 18.0
 	linear_damp = 0.45
 	angular_damp = 2.4

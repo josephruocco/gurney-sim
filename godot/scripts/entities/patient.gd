@@ -2,6 +2,8 @@ class_name SlidingPatient
 extends RigidBody3D
 
 func _ready() -> void:
+	collision_layer = 8
+	collision_mask = 3
 	mass = 4.5
 	linear_damp = 0.15
 	angular_damp = 0.8

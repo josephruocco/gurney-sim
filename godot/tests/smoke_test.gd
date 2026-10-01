@@ -14,6 +14,9 @@ func _init() -> void:
 	main.network.offline()
 	await physics_frame
 	main.players[1].set_physics_process(false)
+	main.players[1].apply_synced_pose(true)
+	assert(main.players[1].arms[0].rotation.x < -0.9, "Pushing pose must reach both arms toward the gurney")
+	assert(main.players[1].collision_mask == 1, "Players should collide with the garage but not fight the gurney")
 	var start_z: float = main.gurney.global_position.z
 	main.gurney.set_player_input(1, Vector2(0, -1), 0.0, true, Vector3(0, 1, 4))
 	for frame in 90:
