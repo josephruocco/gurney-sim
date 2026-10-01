@@ -27,10 +27,15 @@ func _ready() -> void:
 	stack.add_theme_constant_override("separation", 8)
 	panel.add_child(stack)
 	var title := Label.new()
-	title.text = "GURNEY SIMULATOR — CO-OP PROTOTYPE"
+	title.text = "GURNEY SIMULATOR — PARKING GARAGE"
 	title.add_theme_color_override("font_color", Color("#31596c"))
 	title.add_theme_font_size_override("font_size", 19)
 	stack.add_child(title)
+	var objective := Label.new()
+	objective.text = "ROOF → STREET  •  GET THE PATIENT DOWN ALIVE"
+	objective.add_theme_color_override("font_color", Color("#617d87"))
+	objective.add_theme_font_size_override("font_size", 12)
+	stack.add_child(objective)
 	status_label = Label.new()
 	status_label.text = "Choose Solo, Host, or Join"
 	status_label.add_theme_color_override("font_color", Color("#d97058"))

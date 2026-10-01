@@ -48,11 +48,11 @@ func _build_camera() -> void:
 func _spawn_physics() -> void:
 	gurney = SharedGurneyScript.new()
 	gurney.name = "SharedGurney"
-	gurney.position = Vector3(0, 1.0, 2)
+	gurney.position = level.gurney_spawn()
 	add_child(gurney)
 	patient = SlidingPatientScript.new()
 	patient.name = "Patient"
-	patient.position = Vector3(0, 1.75, 2)
+	patient.position = level.patient_spawn()
 	add_child(patient)
 	gurney.patient = patient
 
@@ -67,7 +67,8 @@ func _spawn_player_everywhere(id: int) -> void:
 	if players.has(id): return
 	var player: CharacterBody3D = GurneyPlayerScript.new()
 	player.setup(id, PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()])
-	player.position = Vector3((id - 1) * 1.2 - 1.2, 1.0, 5.0)
+	player.position = level.player_spawn(id)
+	player.rotation.y = PI
 	player.target_gurney = gurney
 	players[id] = player
 	add_child(player, true)

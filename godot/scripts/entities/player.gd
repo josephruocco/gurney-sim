@@ -77,6 +77,8 @@ func _physics_process(delta: float) -> void:
 	local_input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	brake_strength = Input.get_action_strength("brake")
 	var direction := Vector3(local_input.x, 0.0, local_input.y)
+	if direction.length_squared() > 0.02:
+		rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1.0, delta * 10.0))
 	velocity.x = move_toward(velocity.x, direction.x * 5.5, 18.0 * delta)
 	velocity.z = move_toward(velocity.z, direction.z * 5.5, 18.0 * delta)
 	velocity.y -= 20.0 * delta

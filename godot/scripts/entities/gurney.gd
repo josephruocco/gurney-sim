@@ -3,7 +3,7 @@ extends RigidBody3D
 
 signal balance_changed(tilt: float, danger: float)
 
-const PUSH_FORCE := 34.0
+const PUSH_FORCE := 120.0
 const STEER_TORQUE := 18.0
 const BRAKE_DRAG := 8.0
 var player_inputs: Dictionary = {}
@@ -14,6 +14,11 @@ func _ready() -> void:
 	mass = 18.0
 	linear_damp = 0.45
 	angular_damp = 2.4
+	var rolling_material := PhysicsMaterial.new()
+	rolling_material.friction = 0.12
+	rolling_material.rough = false
+	rolling_material.bounce = 0.04
+	physics_material_override = rolling_material
 	_build_model()
 
 func _build_model() -> void:

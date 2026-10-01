@@ -18,6 +18,7 @@ Choose **Solo** for one instance. For local multiplayer, choose **Host** in one 
 - Host-authoritative combined push, brake, and steering inputs
 - Sliding rigid-body patient whose position affects balance
 - Player weight and lean affecting gurney balance
-- Ramp, upper platform, and narrow balance beam
+- Parking-garage roof-to-street switchback with parked and moving traffic
+- Broken-guardrail balance shortcut, concrete columns, cones, and finish bay
 - ENet host/client flow for local multi-instance testing
 - Placeholder procedural geometry only
