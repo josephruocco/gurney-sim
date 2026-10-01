@@ -41,7 +41,7 @@ final class GameController: UIViewController, WKUIDelegate {
         webView?.evaluateJavaScript("window.dispatchEvent(new Event('gurney-background'))", completionHandler: nil)
     }
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
-        let alert = UIAlertController(title: "Gurney Journey", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "Gurney Simulator", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
         alert.addAction(UIAlertAction(title: "Leave", style: .destructive) { _ in completionHandler(true) })
         present(alert, animated: true)

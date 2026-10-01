@@ -1,4 +1,4 @@
-# Gurney Journey artwork
+# Gurney Simulator artwork
 
 The user’s sketch is the character reference: sleepy line eyes, a simple hemispherical nose, rounded, slightly chubby cylindrical hospital gown, stubby hands and short cylindrical legs with rounded nubs, and a few short hairs. The default skin is warm peach.
 

@@ -1,4 +1,4 @@
-# Gurney Journey for iOS
+# Gurney Simulator for iOS
 
 A landscape iPhone/iPad app that runs the existing Three.js game in a native WKWebView. The game and Three.js 0.160.0 are bundled for offline play. Scores use the web view's persistent local storage.
 
