@@ -15,6 +15,7 @@ var patient: RigidBody3D
 var players: Dictionary = {}
 var sync_accumulator := 0.0
 var game_camera: Camera3D
+var received_world_sync := false
 
 func _ready() -> void:
 	network = NetworkManagerScript.new(); add_child(network)
@@ -23,7 +24,10 @@ func _ready() -> void:
 	_build_camera()
 	_spawn_physics()
 	network.peer_ready.connect(_server_peer_ready)
-	network.connection_message.connect(func(message: String): hud.status_label.text = message)
+	network.connection_message.connect(func(message: String):
+		hud.status_label.text = message
+		print("NETWORK ", message)
+	)
 	hud.solo_button.pressed.connect(func(): network.offline())
 	hud.host_button.pressed.connect(func(): network.host())
 	hud.join_button.pressed.connect(func(): network.join())
@@ -67,6 +71,7 @@ func _spawn_player_everywhere(id: int) -> void:
 	player.target_gurney = gurney
 	players[id] = player
 	add_child(player, true)
+	print("ROSTER local=%d spawned=%d total=%d" % [multiplayer.get_unique_id(), id, players.size()])
 
 func _physics_process(delta: float) -> void:
 	var desired_camera := gurney.global_position + Vector3(6.0, 4.8, 9.5)
@@ -86,6 +91,9 @@ func _physics_process(delta: float) -> void:
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
 func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_angular: Vector3, patient_transform: Transform3D, patient_linear: Vector3, patient_angular: Vector3, player_states: Dictionary) -> void:
 	if multiplayer.is_server(): return
+	if !received_world_sync:
+		received_world_sync = true
+		print("WORLD_SYNC local=%d players=%d" % [multiplayer.get_unique_id(), player_states.size()])
 	gurney.global_transform = gurney_transform
 	gurney.linear_velocity = gurney_linear
 	gurney.angular_velocity = gurney_angular
