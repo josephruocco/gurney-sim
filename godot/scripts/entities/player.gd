@@ -9,6 +9,27 @@ var brake_strength := 0.0
 var target_gurney: RigidBody3D
 var body_mesh: MeshInstance3D
 
+func _material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.92
+	return material
+
+func _sphere(parent: Node3D, name_: String, scale_: Vector3, position_: Vector3, material: Material) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	part.name = name_
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.5
+	mesh.height = 1.0
+	mesh.radial_segments = 18
+	mesh.rings = 10
+	part.mesh = mesh
+	part.scale = scale_
+	part.position = position_
+	part.material_override = material
+	parent.add_child(part)
+	return part
+
 func setup(id: int, color: Color) -> void:
 	peer_id = id
 	name = "Player_%d" % id
@@ -23,25 +44,33 @@ func _build_body() -> void:
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	add_child(collision)
-	body_mesh = MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.38
-	capsule.height = 1.5
-	body_mesh.mesh = capsule
-	var material := StandardMaterial3D.new()
-	material.albedo_color = player_color
-	body_mesh.material_override = material
-	add_child(body_mesh)
-	var head := MeshInstance3D.new()
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = 0.34
-	head_mesh.height = 0.68
-	head.mesh = head_mesh
-	head.position.y = 0.9
-	var skin := StandardMaterial3D.new()
-	skin.albedo_color = Color("#f0c7a5")
-	head.material_override = skin
-	add_child(head)
+	var visual := Node3D.new()
+	visual.name = "Character"
+	add_child(visual)
+	var shirt := _material(player_color)
+	var skin := _material(Color("#f0c7a5"))
+	var ink := _material(Color("#253547"))
+	var hair := _material(Color("#554337"))
+	body_mesh = _sphere(visual, "Shirt", Vector3(0.92, 0.9, 0.76), Vector3(0, 0.0, 0), shirt)
+	_sphere(visual, "Head", Vector3(0.84, 0.9, 0.72), Vector3(0, 0.78, 0), skin)
+	for side in [-1.0, 1.0]:
+		_sphere(visual, "Sleeve", Vector3(0.3, 0.38, 0.3), Vector3(side * 0.5, 0.12, 0), shirt)
+		_sphere(visual, "Arm", Vector3(0.2, 0.42, 0.2), Vector3(side * 0.56, -0.17, 0), skin)
+		_sphere(visual, "Leg", Vector3(0.22, 0.48, 0.25), Vector3(side * 0.22, -0.73, 0), skin)
+		_sphere(visual, "Eye", Vector3(0.11, 0.022, 0.026), Vector3(side * 0.17, 0.88, -0.37), ink)
+	_sphere(visual, "Nose", Vector3(0.22, 0.19, 0.19), Vector3(0, 0.73, -0.39), skin)
+	for x in [-0.22, -0.06, 0.11, 0.24]:
+		var strand := MeshInstance3D.new()
+		strand.name = "Hair"
+		var strand_mesh := CylinderMesh.new()
+		strand_mesh.top_radius = 0.01
+		strand_mesh.bottom_radius = 0.01
+		strand_mesh.height = 0.13
+		strand.mesh = strand_mesh
+		strand.position = Vector3(x, 1.28 - absf(x) * 0.35, 0)
+		strand.rotation_degrees.z = x * 45.0
+		strand.material_override = hair
+		visual.add_child(strand)
 
 func _physics_process(delta: float) -> void:
 	if !is_multiplayer_authority(): return
