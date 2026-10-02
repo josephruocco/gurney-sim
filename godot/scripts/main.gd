@@ -27,6 +27,8 @@ var ready_players: Dictionary = {}
 var local_ready := false
 var auto_ready := false
 var audio: Node
+var gurney_network_target := Transform3D.IDENTITY
+var patient_network_target := Transform3D.IDENTITY
 
 func _ready() -> void:
 	network = NetworkManagerScript.new(); add_child(network)
@@ -190,6 +192,7 @@ func _start_run() -> void:
 	hud.set_run_time(0.0)
 
 func _physics_process(delta: float) -> void:
+	if !multiplayer.is_server() and received_world_sync: _interpolate_remote_world(delta)
 	audio.set_gurney_speed(gurney.speed_kph())
 	var flat_velocity := Vector3(gurney.linear_velocity.x, 0.0, gurney.linear_velocity.z)
 	var speed_factor := clampf(flat_velocity.length() / 9.0, 0.0, 1.0)
@@ -238,7 +241,7 @@ func _sync_players_only() -> void:
 func _sync_lobby_players(player_states: Dictionary) -> void:
 	for id in player_states:
 		if players.has(id) and !players[id].is_multiplayer_authority():
-			players[id].global_transform = player_states[id]["transform"]
+			players[id].apply_network_transform(player_states[id]["transform"])
 			players[id].apply_synced_pose(false)
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
@@ -246,11 +249,13 @@ func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_a
 	if multiplayer.is_server(): return
 	if !received_world_sync:
 		received_world_sync = true
+		gurney.global_transform = gurney_transform
+		patient.global_transform = patient_transform
 		print("WORLD_SYNC local=%d players=%d" % [multiplayer.get_unique_id(), player_states.size()])
-	gurney.global_transform = gurney_transform
+	gurney_network_target = gurney_transform
 	gurney.linear_velocity = gurney_linear
 	gurney.angular_velocity = gurney_angular
-	patient.global_transform = patient_transform
+	patient_network_target = patient_transform
 	patient.linear_velocity = patient_linear
 	patient.angular_velocity = patient_angular
 	run_time = synced_time
@@ -258,8 +263,15 @@ func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_a
 	for id in player_states:
 		if players.has(id) and !players[id].is_multiplayer_authority():
 			var state: Dictionary = player_states[id]
-			players[id].global_transform = state["transform"]
+			players[id].apply_network_transform(state["transform"])
 			players[id].apply_synced_pose(state["pushing"])
+
+func _interpolate_remote_world(delta: float) -> void:
+	var weight := 1.0 - exp(-16.0 * delta)
+	gurney.global_position = gurney.global_position.lerp(gurney_network_target.origin, weight)
+	gurney.global_basis = Basis(gurney.global_basis.get_rotation_quaternion().slerp(gurney_network_target.basis.get_rotation_quaternion(), weight))
+	patient.global_position = patient.global_position.lerp(patient_network_target.origin, weight)
+	patient.global_basis = Basis(patient.global_basis.get_rotation_quaternion().slerp(patient_network_target.basis.get_rotation_quaternion(), weight))
 
 func _update_hud(danger: float) -> void:
 	var local_patient: Vector3 = gurney.global_transform.affine_inverse() * patient.global_position

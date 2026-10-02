@@ -10,6 +10,7 @@ const PORT := 8910
 const MAX_PLAYERS := 4
 var active_port := PORT
 var upnp: UPNP
+var upnp_mapping_open := false
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -45,12 +46,13 @@ func _open_internet_port() -> void:
 		return
 	var mapping := upnp.add_port_mapping(active_port, active_port, "Gurney Simulator", "UDP", 0)
 	if mapping == UPNP.UPNP_RESULT_SUCCESS:
+		upnp_mapping_open = true
 		public_endpoint.emit("Internet invite: %s:%d" % [upnp.query_external_address(), active_port])
 	else:
 		public_endpoint.emit("Internet: forward UDP %d manually" % active_port)
 
 func _exit_tree() -> void:
-	if upnp and upnp.get_gateway() and upnp.get_gateway().is_valid_gateway():
+	if upnp_mapping_open and upnp:
 		upnp.delete_port_mapping(active_port, "UDP")
 
 func offline() -> void:

@@ -16,6 +16,8 @@ var arms: Array[MeshInstance3D] = []
 var legs: Array[MeshInstance3D] = []
 var gait_time := 0.0
 var nameplate: Label3D
+var network_target := Transform3D.IDENTITY
+var has_network_target := false
 
 func _material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
@@ -100,6 +102,12 @@ func apply_synced_pose(is_pushing: bool) -> void:
 	pushing = is_pushing
 	_apply_pose(0.0)
 
+func apply_network_transform(next_transform: Transform3D) -> void:
+	if !has_network_target:
+		global_transform = next_transform
+		has_network_target = true
+	network_target = next_transform
+
 func _apply_pose(delta: float) -> void:
 	gait_time += delta * (10.0 if pushing else 7.0)
 	var stride := sin(gait_time) * (0.42 if pushing else minf(0.32, Vector2(velocity.x, velocity.z).length() * 0.06))
@@ -114,7 +122,15 @@ func _apply_pose(delta: float) -> void:
 	body_mesh.scale.y = 0.9 - (absf(sin(gait_time * 2.0)) * 0.035 if moving else 0.0)
 
 func _physics_process(delta: float) -> void:
-	if !is_multiplayer_authority(): return
+	if !is_multiplayer_authority():
+		if has_network_target:
+			var weight := 1.0 - exp(-18.0 * delta)
+			global_position = global_position.lerp(network_target.origin, weight)
+			var current_rotation := global_basis.get_rotation_quaternion()
+			var target_rotation := network_target.basis.get_rotation_quaternion()
+			global_basis = Basis(current_rotation.slerp(target_rotation, weight))
+		_apply_pose(delta)
+		return
 	local_input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	brake_strength = Input.get_action_strength("brake")
 	if Input.is_action_just_pressed("interact"):
@@ -145,14 +161,15 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 20.0 * delta
 		move_and_slide()
 	_apply_pose(delta)
-	_submit_input.rpc_id(1, local_input, brake_strength, pushing)
+	_submit_input.rpc_id(1, local_input, brake_strength, pushing, global_transform)
 
 @rpc("any_peer", "call_local", "unreliable", 1)
-func _submit_input(input_vector: Vector2, braking: float, is_pushing: bool) -> void:
+func _submit_input(input_vector: Vector2, braking: float, is_pushing: bool, submitted_transform: Transform3D) -> void:
 	if !multiplayer.is_server() or !target_gurney: return
 	var sender := multiplayer.get_remote_sender_id() if multiplayer.get_remote_sender_id() else peer_id
-	target_gurney.set_player_input(sender, input_vector, braking, is_pushing, global_position)
+	var submitted_position := submitted_transform.origin if sender != 1 else global_position
+	target_gurney.set_player_input(sender, input_vector, braking, is_pushing, submitted_position)
 	var main := get_parent()
 	if main.players.has(sender) and sender != 1:
-		main.players[sender].global_position = global_position
+		main.players[sender].apply_network_transform(submitted_transform)
 		main.players[sender].apply_synced_pose(is_pushing)
