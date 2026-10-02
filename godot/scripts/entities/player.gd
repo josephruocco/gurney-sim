@@ -4,6 +4,7 @@ extends CharacterBody3D
 signal grab_changed(grabbed: bool)
 
 @export var peer_id := 1
+@export var crew_slot := 0
 @export var player_color := Color("#d97058")
 var pushing := false
 var local_input := Vector2.ZERO
@@ -37,8 +38,9 @@ func _sphere(parent: Node3D, name_: String, scale_: Vector3, position_: Vector3,
 	parent.add_child(part)
 	return part
 
-func setup(id: int, color: Color) -> void:
+func setup(id: int, slot: int, color: Color) -> void:
 	peer_id = id
+	crew_slot = slot
 	name = "Player_%d" % id
 	player_color = color
 	set_multiplayer_authority(id)
@@ -126,8 +128,8 @@ func _physics_process(delta: float) -> void:
 		direction = camera_right.normalized() * local_input.x + camera_forward.normalized() * -local_input.y
 		if direction.length_squared() > 1.0: direction = direction.normalized()
 	if pushing and target_gurney:
-		var side := -0.82 if peer_id % 2 == 1 else 0.82
-		var row := float((peer_id - 1) / 2)
+		var side := -0.82 if crew_slot % 2 == 0 else 0.82
+		var row := float(crew_slot / 2)
 		var attachment: Vector3 = target_gurney.global_transform * Vector3(side, 0.58, 2.0 + row * 0.55)
 		global_position = global_position.lerp(attachment, minf(1.0, delta * 12.0))
 		rotation.y = lerp_angle(rotation.y, target_gurney.rotation.y, minf(1.0, delta * 12.0))

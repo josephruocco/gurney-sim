@@ -119,16 +119,17 @@ func _remove_peer(id: int) -> void:
 @rpc("authority", "call_local", "reliable")
 func _spawn_player_everywhere(id: int) -> void:
 	if players.has(id): return
+	var slot := players.size()
 	var player: CharacterBody3D = GurneyPlayerScript.new()
-	player.setup(id, PLAYER_COLORS[(id - 1) % PLAYER_COLORS.size()])
-	player.position = level.player_spawn(id)
+	player.setup(id, slot, PLAYER_COLORS[slot % PLAYER_COLORS.size()])
+	player.position = level.player_spawn_slot(slot)
 	player.rotation.y = PI
 	player.target_gurney = gurney
 	players[id] = player
 	add_child(player, true)
 	if player.is_multiplayer_authority(): player.grab_changed.connect(audio.play_grab)
 	if player_names.has(id): player.set_display_name(player_names[id])
-	print("ROSTER local=%d spawned=%d total=%d" % [multiplayer.get_unique_id(), id, players.size()])
+	print("ROSTER local=%d spawned=%d slot=%d total=%d" % [multiplayer.get_unique_id(), id, slot, players.size()])
 
 @rpc("any_peer", "call_local", "reliable")
 func _register_name(requested_name: String) -> void:
@@ -191,7 +192,9 @@ func _physics_process(delta: float) -> void:
 	gurney.freeze = !multiplayer.is_server() or game_state != GameState.RUNNING
 	patient.freeze = !multiplayer.is_server() or game_state != GameState.RUNNING
 	if !multiplayer.is_server(): return
-	if game_state == GameState.WAITING: return
+	if game_state == GameState.WAITING:
+		_sync_players_only()
+		return
 	if game_state != GameState.RUNNING:
 		if Input.is_action_just_pressed("restart"): _restart_run.rpc()
 		return
@@ -206,6 +209,22 @@ func _physics_process(delta: float) -> void:
 	for id in players:
 		player_states[id] = {"transform": players[id].global_transform, "pushing": players[id].pushing}
 	_sync_world.rpc(gurney.global_transform, gurney.linear_velocity, gurney.angular_velocity, patient.global_transform, patient.linear_velocity, patient.angular_velocity, player_states, run_time)
+
+func _sync_players_only() -> void:
+	sync_accumulator += get_physics_process_delta_time()
+	if sync_accumulator < 0.05: return
+	sync_accumulator = 0.0
+	var player_states := {}
+	for id in players:
+		player_states[id] = {"transform": players[id].global_transform, "pushing": false}
+	_sync_lobby_players.rpc(player_states)
+
+@rpc("authority", "call_remote", "unreliable_ordered", 3)
+func _sync_lobby_players(player_states: Dictionary) -> void:
+	for id in player_states:
+		if players.has(id) and !players[id].is_multiplayer_authority():
+			players[id].global_transform = player_states[id]["transform"]
+			players[id].apply_synced_pose(false)
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
 func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_angular: Vector3, patient_transform: Transform3D, patient_linear: Vector3, patient_angular: Vector3, player_states: Dictionary, synced_time: float) -> void:
@@ -272,8 +291,11 @@ func _restart_run() -> void:
 	patient.global_rotation = Vector3.ZERO
 	patient.linear_velocity = Vector3.ZERO
 	patient.angular_velocity = Vector3.ZERO
-	for id in players:
-		players[id].global_position = level.player_spawn(id)
+	var ids := players.keys()
+	ids.sort()
+	for slot in ids.size():
+		var id = ids[slot]
+		players[id].global_position = level.player_spawn_slot(slot)
 		players[id].pushing = false
 		players[id].velocity = Vector3.ZERO
 	hud.hide_result()

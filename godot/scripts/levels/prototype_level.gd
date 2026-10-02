@@ -8,7 +8,7 @@ func _ready() -> void:
 
 func gurney_spawn() -> Vector3: return Vector3(0, 8.85, 10)
 func patient_spawn() -> Vector3: return Vector3(0, 9.6, 10)
-func player_spawn(id: int) -> Vector3: return Vector3((id - 1) * 1.2 - 1.2, 9.0, 14)
+func player_spawn_slot(slot: int) -> Vector3: return Vector3(float(slot) * 1.2 - 1.2, 9.0, 14)
 func finish_position() -> Vector3: return Vector3(-29, 0.18, -39)
 func is_in_finish(position_: Vector3) -> bool:
 	var offset := position_ - finish_position()
