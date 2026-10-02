@@ -12,6 +12,8 @@ func _init() -> void:
 	assert(main.level.get_node_or_null("BalanceLedge") != null, "Garage needs a balance shortcut")
 	assert(main.level.get_node_or_null("FinishZone") != null, "Garage needs a street-level finish")
 	assert(main.level.is_in_finish(main.level.finish_position()), "Finish zone must recognize its center")
+	var endpoint: Dictionary = main._parse_endpoint("203.0.113.4:9123")
+	assert(endpoint.host == "203.0.113.4" and endpoint.port == 9123, "Internet endpoint must parse IP and port")
 	assert(!main.level.is_in_finish(main.level.gurney_spawn()), "Start must not count as a finish")
 	main._start_solo()
 	await physics_frame

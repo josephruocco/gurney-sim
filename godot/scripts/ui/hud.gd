@@ -15,6 +15,7 @@ var address_input: LineEdit
 var roster_label: Label
 var ready_button: Button
 var lobby_panel: PanelContainer
+var internet_label: Label
 
 func _ready() -> void:
 	var panel := PanelContainer.new()
@@ -125,13 +126,19 @@ func _build_lobby_panel() -> void:
 	heading.add_theme_font_size_override("font_size", 17)
 	stack.add_child(heading)
 	name_input = _field("Your name", "Orderly")
-	address_input = _field("Host address", "127.0.0.1")
+	address_input = _field("Host address", "127.0.0.1:8910")
 	stack.add_child(name_input)
 	stack.add_child(address_input)
 	roster_label = Label.new()
 	roster_label.text = "No crew connected"
 	roster_label.add_theme_color_override("font_color", Color("#31596c"))
 	stack.add_child(roster_label)
+	internet_label = Label.new()
+	internet_label.text = "LAN or public IP:port • host may need UDP port forwarding"
+	internet_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	internet_label.add_theme_color_override("font_color", Color("#617d87"))
+	internet_label.add_theme_font_size_override("font_size", 11)
+	stack.add_child(internet_label)
 	ready_button = Button.new()
 	ready_button.text = "Ready up"
 	ready_button.disabled = true
@@ -149,6 +156,9 @@ func set_roster(names: Dictionary, ready: Dictionary) -> void:
 func set_lobby_connected(connected: bool) -> void:
 	ready_button.disabled = !connected
 	name_input.editable = !connected
+
+func set_internet_status(message: String) -> void:
+	internet_label.text = message
 
 func hide_lobby() -> void:
 	lobby_panel.visible = false

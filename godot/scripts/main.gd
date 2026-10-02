@@ -37,6 +37,7 @@ func _ready() -> void:
 	_spawn_physics()
 	network.peer_ready.connect(_server_peer_ready)
 	network.peer_left.connect(_remove_peer)
+	network.public_endpoint.connect(hud.set_internet_status)
 	network.connection_message.connect(func(message: String):
 		hud.status_label.text = message
 		print("NETWORK ", message)
@@ -67,14 +68,28 @@ func _start_solo() -> void:
 	_start_run.rpc()
 
 func _host_lobby() -> void:
-	if network.host() != OK: return
+	var endpoint := _parse_endpoint(hud.address_input.text)
+	if network.host(endpoint.port, !auto_ready) != OK: return
 	hud.set_lobby_connected(true)
 	_register_name( _chosen_name())
 	if auto_ready: _set_ready(true)
 
 func _join_lobby() -> void:
-	if network.join(hud.address_input.text.strip_edges()) == OK:
+	var endpoint := _parse_endpoint(hud.address_input.text)
+	if network.join(endpoint.host, endpoint.port) == OK:
 		hud.set_lobby_connected(true)
+
+func _parse_endpoint(value: String) -> Dictionary:
+	var cleaned: String = value.strip_edges()
+	var host: String = cleaned
+	var port: int = network.PORT
+	var separator := cleaned.rfind(":")
+	if separator > 0 and separator < cleaned.length() - 1:
+		host = cleaned.left(separator)
+		var parsed_port := cleaned.substr(separator + 1).to_int()
+		if parsed_port >= 1024 and parsed_port <= 65535: port = parsed_port
+	if host.is_empty(): host = "127.0.0.1"
+	return {"host": host, "port": port}
 
 func _toggle_ready() -> void:
 	local_ready = !local_ready
