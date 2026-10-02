@@ -56,25 +56,46 @@ func _build_model() -> void:
 	headboard.position = Vector3(0, 0.34, 1.62)
 	headboard.material_override = frame_material
 	add_child(headboard)
+	# A visible lower carriage separates the bed from the floor and reads as a real gurney.
+	for size_and_position in [
+		[Vector3(1.35, 0.09, 0.09), Vector3(0, -0.82, -1.16)],
+		[Vector3(1.35, 0.09, 0.09), Vector3(0, -0.82, 1.16)],
+		[Vector3(0.09, 0.09, 2.35), Vector3(-0.63, -0.82, 0)],
+		[Vector3(0.09, 0.09, 2.35), Vector3(0.63, -0.82, 0)]
+	]:
+		var support := MeshInstance3D.new()
+		var support_mesh := BoxMesh.new()
+		support_mesh.size = size_and_position[0]
+		support.mesh = support_mesh
+		support.position = size_and_position[1]
+		support.material_override = frame_material
+		add_child(support)
 	for x in [-0.68, 0.68]:
 		for z in [-1.35, 1.35]:
 			var leg := MeshInstance3D.new()
 			var leg_mesh := CylinderMesh.new()
-			leg_mesh.top_radius = 0.045
-			leg_mesh.bottom_radius = 0.045
-			leg_mesh.height = 0.55
+			leg_mesh.top_radius = 0.075
+			leg_mesh.bottom_radius = 0.075
+			leg_mesh.height = 0.9
 			leg.mesh = leg_mesh
-			leg.position = Vector3(x, -0.28, z)
+			leg.position = Vector3(x, -0.48, z)
 			leg.material_override = frame_material
 			add_child(leg)
+			var fork := MeshInstance3D.new()
+			var fork_mesh := BoxMesh.new()
+			fork_mesh.size = Vector3(0.08, 0.34, 0.28)
+			fork.mesh = fork_mesh
+			fork.position = Vector3(x, -0.94, z)
+			fork.material_override = frame_material
+			add_child(fork)
 			var wheel := MeshInstance3D.new()
 			var wheel_mesh := CylinderMesh.new()
-			wheel_mesh.top_radius = 0.17
-			wheel_mesh.bottom_radius = 0.17
-			wheel_mesh.height = 0.14
+			wheel_mesh.top_radius = 0.22
+			wheel_mesh.bottom_radius = 0.22
+			wheel_mesh.height = 0.17
 			wheel.mesh = wheel_mesh
 			wheel.rotation_degrees.z = 90
-			wheel.position = Vector3(x, -0.6, z)
+			wheel.position = Vector3(x, -1.0, z)
 			add_child(wheel)
 
 func set_player_input(id: int, input_vector: Vector2, braking: float, pushing: bool, position: Vector3) -> void:
