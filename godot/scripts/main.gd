@@ -6,6 +6,7 @@ const PrototypeHUDScript = preload("res://scripts/ui/hud.gd")
 const SharedGurneyScript = preload("res://scripts/entities/gurney.gd")
 const SlidingPatientScript = preload("res://scripts/entities/patient.gd")
 const GurneyPlayerScript = preload("res://scripts/entities/player.gd")
+const AudioManagerScript = preload("res://scripts/audio/audio_manager.gd")
 const PLAYER_COLORS := [Color("#d97058"), Color("#5c8fb1"), Color("#d8ae4e"), Color("#75a77d")]
 var network: Node
 var level: Node3D
@@ -25,11 +26,13 @@ var player_names: Dictionary = {}
 var ready_players: Dictionary = {}
 var local_ready := false
 var auto_ready := false
+var audio: Node
 
 func _ready() -> void:
 	network = NetworkManagerScript.new(); add_child(network)
 	level = PrototypeLevelScript.new(); add_child(level)
 	hud = PrototypeHUDScript.new(); add_child(hud)
+	audio = AudioManagerScript.new(); add_child(audio)
 	_build_camera()
 	_spawn_physics()
 	network.peer_ready.connect(_server_peer_ready)
@@ -41,10 +44,10 @@ func _ready() -> void:
 			_register_name.rpc_id(1, _chosen_name())
 			if auto_ready: _set_ready.rpc_id(1, true)
 	)
-	hud.solo_button.pressed.connect(_start_solo)
-	hud.host_button.pressed.connect(_host_lobby)
-	hud.join_button.pressed.connect(_join_lobby)
-	hud.ready_button.pressed.connect(_toggle_ready)
+	hud.solo_button.pressed.connect(func(): audio.play_click(); _start_solo())
+	hud.host_button.pressed.connect(func(): audio.play_click(); _host_lobby())
+	hud.join_button.pressed.connect(func(): audio.play_click(); _join_lobby())
+	hud.ready_button.pressed.connect(func(): audio.play_click(); _toggle_ready())
 	gurney.balance_changed.connect(func(_tilt: float, danger: float): _update_hud(danger))
 	var args := OS.get_cmdline_user_args()
 	auto_ready = "--autostart" in args
@@ -123,6 +126,7 @@ func _spawn_player_everywhere(id: int) -> void:
 	player.target_gurney = gurney
 	players[id] = player
 	add_child(player, true)
+	if player.is_multiplayer_authority(): player.grab_changed.connect(audio.play_grab)
 	if player_names.has(id): player.set_display_name(player_names[id])
 	print("ROSTER local=%d spawned=%d total=%d" % [multiplayer.get_unique_id(), id, players.size()])
 
@@ -170,6 +174,7 @@ func _start_run() -> void:
 	hud.set_run_time(0.0)
 
 func _physics_process(delta: float) -> void:
+	audio.set_gurney_speed(gurney.speed_kph())
 	var flat_velocity := Vector3(gurney.linear_velocity.x, 0.0, gurney.linear_velocity.z)
 	var speed_factor := clampf(flat_velocity.length() / 9.0, 0.0, 1.0)
 	var forward := -gurney.global_basis.z
@@ -251,6 +256,8 @@ func _sync_game_result(won: bool, reason: String, seconds: float) -> void:
 	run_time = seconds
 	hud.set_run_time(run_time)
 	hud.show_result(won, reason, seconds)
+	if won: audio.play_win()
+	else: audio.play_loss()
 
 @rpc("authority", "call_local", "reliable")
 func _restart_run() -> void:

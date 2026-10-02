@@ -1,6 +1,8 @@
 class_name GurneyPlayer
 extends CharacterBody3D
 
+signal grab_changed(grabbed: bool)
+
 @export var peer_id := 1
 @export var player_color := Color("#d97058")
 var pushing := false
@@ -111,7 +113,9 @@ func _physics_process(delta: float) -> void:
 	local_input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	brake_strength = Input.get_action_strength("brake")
 	if Input.is_action_just_pressed("interact"):
+		var was_pushing := pushing
 		pushing = !pushing if target_gurney and global_position.distance_to(target_gurney.global_position) < 3.2 else false
+		if pushing != was_pushing: grab_changed.emit(pushing)
 	var direction := Vector3(local_input.x, 0.0, local_input.y)
 	var camera := get_viewport().get_camera_3d()
 	if camera:
