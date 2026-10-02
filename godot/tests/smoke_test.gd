@@ -13,7 +13,7 @@ func _init() -> void:
 	assert(main.level.get_node_or_null("FinishZone") != null, "Garage needs a street-level finish")
 	assert(main.level.is_in_finish(main.level.finish_position()), "Finish zone must recognize its center")
 	assert(!main.level.is_in_finish(main.level.gurney_spawn()), "Start must not count as a finish")
-	main.network.offline()
+	main._start_solo()
 	await physics_frame
 	main.players[1].set_physics_process(false)
 	main.players[1].apply_synced_pose(true)

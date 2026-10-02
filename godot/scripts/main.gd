@@ -17,10 +17,14 @@ var sync_accumulator := 0.0
 var game_camera: Camera3D
 var received_world_sync := false
 var camera_look_target := Vector3.ZERO
-enum GameState { RUNNING, WON, LOST }
-var game_state := GameState.RUNNING
+enum GameState { WAITING, RUNNING, WON, LOST }
+var game_state := GameState.WAITING
 var run_time := 0.0
 var danger_time := 0.0
+var player_names: Dictionary = {}
+var ready_players: Dictionary = {}
+var local_ready := false
+var auto_ready := false
 
 func _ready() -> void:
 	network = NetworkManagerScript.new(); add_child(network)
@@ -29,18 +33,50 @@ func _ready() -> void:
 	_build_camera()
 	_spawn_physics()
 	network.peer_ready.connect(_server_peer_ready)
+	network.peer_left.connect(_remove_peer)
 	network.connection_message.connect(func(message: String):
 		hud.status_label.text = message
 		print("NETWORK ", message)
+		if message.begins_with("Connected as player"):
+			_register_name.rpc_id(1, _chosen_name())
+			if auto_ready: _set_ready.rpc_id(1, true)
 	)
-	hud.solo_button.pressed.connect(func(): network.offline())
-	hud.host_button.pressed.connect(func(): network.host())
-	hud.join_button.pressed.connect(func(): network.join())
+	hud.solo_button.pressed.connect(_start_solo)
+	hud.host_button.pressed.connect(_host_lobby)
+	hud.join_button.pressed.connect(_join_lobby)
+	hud.ready_button.pressed.connect(_toggle_ready)
 	gurney.balance_changed.connect(func(_tilt: float, danger: float): _update_hud(danger))
 	var args := OS.get_cmdline_user_args()
-	if "--host" in args: network.host()
-	elif "--join" in args: network.join()
-	elif "--solo" in args: network.offline()
+	auto_ready = "--autostart" in args
+	if "--host" in args: _host_lobby()
+	elif "--join" in args: _join_lobby()
+	elif "--solo" in args: _start_solo()
+
+func _chosen_name() -> String:
+	var cleaned: String = hud.name_input.text.strip_edges().left(18)
+	return cleaned if !cleaned.is_empty() else "Orderly"
+
+func _start_solo() -> void:
+	network.offline()
+	player_names[1] = _chosen_name()
+	ready_players[1] = true
+	_apply_lobby_state(player_names, ready_players)
+	_start_run.rpc()
+
+func _host_lobby() -> void:
+	if network.host() != OK: return
+	hud.set_lobby_connected(true)
+	_register_name( _chosen_name())
+	if auto_ready: _set_ready(true)
+
+func _join_lobby() -> void:
+	if network.join(hud.address_input.text.strip_edges()) == OK:
+		hud.set_lobby_connected(true)
+
+func _toggle_ready() -> void:
+	local_ready = !local_ready
+	hud.ready_button.text = "Cancel ready" if local_ready else "Ready up"
+	_set_ready.rpc_id(1, local_ready)
 
 func _build_camera() -> void:
 	game_camera = Camera3D.new()
@@ -67,6 +103,15 @@ func _server_peer_ready(id: int) -> void:
 	for existing_id in players:
 		_spawn_player_everywhere.rpc_id(id, existing_id)
 	_spawn_player_everywhere.rpc(id)
+	_broadcast_lobby.rpc_id(id, player_names, ready_players)
+
+func _remove_peer(id: int) -> void:
+	if players.has(id):
+		players[id].queue_free()
+		players.erase(id)
+	player_names.erase(id)
+	ready_players.erase(id)
+	if multiplayer.is_server(): _broadcast_lobby.rpc(player_names, ready_players)
 
 @rpc("authority", "call_local", "reliable")
 func _spawn_player_everywhere(id: int) -> void:
@@ -78,7 +123,51 @@ func _spawn_player_everywhere(id: int) -> void:
 	player.target_gurney = gurney
 	players[id] = player
 	add_child(player, true)
+	if player_names.has(id): player.set_display_name(player_names[id])
 	print("ROSTER local=%d spawned=%d total=%d" % [multiplayer.get_unique_id(), id, players.size()])
+
+@rpc("any_peer", "call_local", "reliable")
+func _register_name(requested_name: String) -> void:
+	if !multiplayer.is_server(): return
+	var sender := multiplayer.get_remote_sender_id()
+	var id := sender if sender != 0 else multiplayer.get_unique_id()
+	var cleaned: String = requested_name.strip_edges().left(18)
+	player_names[id] = cleaned if !cleaned.is_empty() else "Orderly %d" % id
+	ready_players[id] = false
+	_broadcast_lobby.rpc(player_names, ready_players)
+
+@rpc("any_peer", "call_local", "reliable")
+func _set_ready(is_ready: bool) -> void:
+	if !multiplayer.is_server(): return
+	var sender := multiplayer.get_remote_sender_id()
+	var id := sender if sender != 0 else multiplayer.get_unique_id()
+	ready_players[id] = is_ready
+	_broadcast_lobby.rpc(player_names, ready_players)
+	if players.size() >= 2 and ready_players.size() >= players.size():
+		for player_id in players:
+			if !ready_players.get(player_id, false): return
+		_start_run.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _broadcast_lobby(names: Dictionary, ready: Dictionary) -> void:
+	_apply_lobby_state(names, ready)
+
+func _apply_lobby_state(names: Dictionary, ready: Dictionary) -> void:
+	player_names = names.duplicate()
+	ready_players = ready.duplicate()
+	hud.set_roster(player_names, ready_players)
+	for id in players:
+		if player_names.has(id): players[id].set_display_name(player_names[id])
+	print("LOBBY local=%d players=%d ready=%d" % [multiplayer.get_unique_id(), player_names.size(), ready_players.values().count(true)])
+
+@rpc("authority", "call_local", "reliable")
+func _start_run() -> void:
+	game_state = GameState.RUNNING
+	run_time = 0.0
+	danger_time = 0.0
+	hud.hide_lobby()
+	hud.hide_result()
+	hud.set_run_time(0.0)
 
 func _physics_process(delta: float) -> void:
 	var flat_velocity := Vector3(gurney.linear_velocity.x, 0.0, gurney.linear_velocity.z)
@@ -97,6 +186,7 @@ func _physics_process(delta: float) -> void:
 	gurney.freeze = !multiplayer.is_server() or game_state != GameState.RUNNING
 	patient.freeze = !multiplayer.is_server() or game_state != GameState.RUNNING
 	if !multiplayer.is_server(): return
+	if game_state == GameState.WAITING: return
 	if game_state != GameState.RUNNING:
 		if Input.is_action_just_pressed("restart"): _restart_run.rpc()
 		return

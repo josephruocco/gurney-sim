@@ -10,6 +10,11 @@ var solo_button: Button
 var timer_label: Label
 var result_panel: PanelContainer
 var result_label: Label
+var name_input: LineEdit
+var address_input: LineEdit
+var roster_label: Label
+var ready_button: Button
+var lobby_panel: PanelContainer
 
 func _ready() -> void:
 	var panel := PanelContainer.new()
@@ -87,6 +92,69 @@ func _ready() -> void:
 	help.add_theme_color_override("font_color", Color("#617d87"))
 	stack.add_child(help)
 	_build_result_panel()
+	_build_lobby_panel()
+
+func _field(placeholder: String, value: String) -> LineEdit:
+	var field := LineEdit.new()
+	field.placeholder_text = placeholder
+	field.text = value
+	field.custom_minimum_size = Vector2(250, 38)
+	return field
+
+func _build_lobby_panel() -> void:
+	lobby_panel = PanelContainer.new()
+	lobby_panel.position = Vector2(18, 330)
+	lobby_panel.custom_minimum_size = Vector2(380, 0)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fff4de", 0.96)
+	style.border_color = Color("#31596c", 0.3)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(16)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	lobby_panel.add_theme_stylebox_override("panel", style)
+	add_child(lobby_panel)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 7)
+	lobby_panel.add_child(stack)
+	var heading := Label.new()
+	heading.text = "SHIFT LOBBY"
+	heading.add_theme_color_override("font_color", Color("#31596c"))
+	heading.add_theme_font_size_override("font_size", 17)
+	stack.add_child(heading)
+	name_input = _field("Your name", "Orderly")
+	address_input = _field("Host address", "127.0.0.1")
+	stack.add_child(name_input)
+	stack.add_child(address_input)
+	roster_label = Label.new()
+	roster_label.text = "No crew connected"
+	roster_label.add_theme_color_override("font_color", Color("#31596c"))
+	stack.add_child(roster_label)
+	ready_button = Button.new()
+	ready_button.text = "Ready up"
+	ready_button.disabled = true
+	stack.add_child(ready_button)
+
+func set_roster(names: Dictionary, ready: Dictionary) -> void:
+	var lines: Array[String] = []
+	var ids := names.keys()
+	ids.sort()
+	for id in ids:
+		var mark := "READY" if ready.get(id, false) else "NOT READY"
+		lines.append("%s  •  %s" % [names[id], mark])
+	roster_label.text = "\n".join(lines) if !lines.is_empty() else "No crew connected"
+
+func set_lobby_connected(connected: bool) -> void:
+	ready_button.disabled = !connected
+	name_input.editable = !connected
+
+func hide_lobby() -> void:
+	lobby_panel.visible = false
+
+func show_lobby() -> void:
+	lobby_panel.visible = true
 
 func _build_result_panel() -> void:
 	result_panel = PanelContainer.new()

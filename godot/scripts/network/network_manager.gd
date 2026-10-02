@@ -3,6 +3,7 @@ extends Node
 
 signal peer_ready(peer_id: int)
 signal connection_message(message: String)
+signal peer_left(peer_id: int)
 
 const PORT := 8910
 const MAX_PLAYERS := 4
@@ -43,3 +44,4 @@ func _on_peer_connected(id: int) -> void:
 
 func _on_peer_disconnected(id: int) -> void:
 	connection_message.emit("Player %d left" % id)
+	peer_left.emit(id)

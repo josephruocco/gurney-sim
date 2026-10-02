@@ -12,6 +12,7 @@ var visual_root: Node3D
 var arms: Array[MeshInstance3D] = []
 var legs: Array[MeshInstance3D] = []
 var gait_time := 0.0
+var nameplate: Label3D
 
 func _material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
@@ -77,6 +78,19 @@ func _build_body() -> void:
 		strand.rotation_degrees.z = x * 45.0
 		strand.material_override = hair
 		visual_root.add_child(strand)
+	nameplate = Label3D.new()
+	nameplate.position = Vector3(0, 1.75, 0)
+	nameplate.font_size = 48
+	nameplate.pixel_size = 0.009
+	nameplate.modulate = Color("#fff4de")
+	nameplate.outline_modulate = Color("#31596c")
+	nameplate.outline_size = 10
+	nameplate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	visual_root.add_child(nameplate)
+	set_display_name("Orderly %d" % peer_id)
+
+func set_display_name(display_name: String) -> void:
+	if nameplate: nameplate.text = display_name
 
 func apply_synced_pose(is_pushing: bool) -> void:
 	pushing = is_pushing
