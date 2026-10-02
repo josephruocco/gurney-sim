@@ -109,6 +109,9 @@ func _apply_pose(delta: float) -> void:
 		arms[index].rotation.x = -1.05 if pushing else -stride * (-1.0 if index == 0 else 1.0)
 		arms[index].position.z = -0.22 if pushing else 0.0
 	visual_root.rotation.x = -0.16 if pushing else 0.0
+	var moving := Vector2(velocity.x, velocity.z).length() > 0.25 or pushing
+	visual_root.position.y = absf(sin(gait_time * 2.0)) * 0.045 if moving else lerpf(visual_root.position.y, 0.0, minf(1.0, delta * 8.0))
+	body_mesh.scale.y = 0.9 - (absf(sin(gait_time * 2.0)) * 0.035 if moving else 0.0)
 
 func _physics_process(delta: float) -> void:
 	if !is_multiplayer_authority(): return

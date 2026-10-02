@@ -9,6 +9,9 @@ const BRAKE_DRAG := 8.0
 var player_inputs: Dictionary = {}
 var patient: RigidBody3D
 var last_state_tick := 0
+var wheels: Array[MeshInstance3D] = []
+var front_forks: Array[Node3D] = []
+var visual_steering := 0.0
 
 func _ready() -> void:
 	collision_layer = 2
@@ -72,22 +75,26 @@ func _build_model() -> void:
 		add_child(support)
 	for x in [-0.68, 0.68]:
 		for z in [-1.35, 1.35]:
+			var caster := Node3D.new()
+			caster.position = Vector3(x, 0, z)
+			add_child(caster)
+			if z < 0: front_forks.append(caster)
 			var leg := MeshInstance3D.new()
 			var leg_mesh := CylinderMesh.new()
 			leg_mesh.top_radius = 0.075
 			leg_mesh.bottom_radius = 0.075
 			leg_mesh.height = 0.9
 			leg.mesh = leg_mesh
-			leg.position = Vector3(x, -0.48, z)
+			leg.position = Vector3(0, -0.48, 0)
 			leg.material_override = frame_material
-			add_child(leg)
+			caster.add_child(leg)
 			var fork := MeshInstance3D.new()
 			var fork_mesh := BoxMesh.new()
 			fork_mesh.size = Vector3(0.08, 0.34, 0.28)
 			fork.mesh = fork_mesh
-			fork.position = Vector3(x, -0.94, z)
+			fork.position = Vector3(0, -0.94, 0)
 			fork.material_override = frame_material
-			add_child(fork)
+			caster.add_child(fork)
 			var wheel := MeshInstance3D.new()
 			var wheel_mesh := CylinderMesh.new()
 			wheel_mesh.top_radius = 0.22
@@ -95,8 +102,16 @@ func _build_model() -> void:
 			wheel_mesh.height = 0.17
 			wheel.mesh = wheel_mesh
 			wheel.rotation_degrees.z = 90
-			wheel.position = Vector3(x, -1.0, z)
-			add_child(wheel)
+			wheel.position = Vector3(0, -1.0, 0)
+			caster.add_child(wheel)
+			wheels.append(wheel)
+
+func _process(delta: float) -> void:
+	var local_velocity := global_basis.inverse() * linear_velocity
+	var wheel_spin := -local_velocity.z / 0.22 * delta
+	for wheel in wheels: wheel.rotate_x(wheel_spin)
+	for caster in front_forks:
+		caster.rotation.y = lerp_angle(caster.rotation.y, visual_steering, minf(1.0, delta * 9.0))
 
 func set_player_input(id: int, input_vector: Vector2, braking: float, pushing: bool, position: Vector3) -> void:
 	player_inputs[id] = {"move": input_vector, "brake": braking, "push": pushing, "position": position}
@@ -110,19 +125,28 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var steering := 0.0
 	var braking := 0.0
 	var lateral_weight := 0.0
+	var pushers := 0
 	for value in player_inputs.values():
 		var entry: Dictionary = value
 		var move: Vector2 = entry["move"]
 		if entry["push"]:
+			pushers += 1
 			push += -move.y
 			steering += move.x
 		braking += float(entry["brake"])
 		var local_position: Vector3 = global_transform.affine_inverse() * Vector3(entry["position"])
 		lateral_weight += clamp(local_position.x, -1.5, 1.5) + move.x * 0.45
 	var forward: Vector3 = -global_transform.basis.z
+	var right: Vector3 = global_transform.basis.x
 	state.apply_central_force(forward * push * PUSH_FORCE)
-	state.apply_torque(Vector3.UP * -steering * STEER_TORQUE)
+	var speed_steering := lerpf(0.65, 1.25, clampf(state.linear_velocity.length() / 8.0, 0.0, 1.0))
+	state.apply_torque(Vector3.UP * -steering * STEER_TORQUE * speed_steering)
+	var lateral_speed := state.linear_velocity.dot(right)
+	state.apply_central_force(-right * lateral_speed * 70.0)
+	visual_steering = clampf(-steering / maxf(1.0, float(pushers)) * 0.42, -0.5, 0.5)
 	state.linear_velocity *= 1.0 / (1.0 + braking * BRAKE_DRAG * state.step)
+	if state.linear_velocity.length() > 13.0:
+		state.linear_velocity = state.linear_velocity.normalized() * 13.0
 	if patient:
 		var patient_local: Vector3 = global_transform.affine_inverse() * patient.global_position
 		lateral_weight += clamp(patient_local.x * 1.4, -1.5, 1.5)
