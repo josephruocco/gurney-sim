@@ -11,6 +11,8 @@ func _init() -> void:
 	assert(main.gurney.mass > main.patient.mass, "Gurney should outweigh patient")
 	assert(main.level.get_node_or_null("BalanceLedge") != null, "Garage needs a balance shortcut")
 	assert(main.level.get_node_or_null("FinishZone") != null, "Garage needs a street-level finish")
+	assert(main.level.is_in_finish(main.level.finish_position()), "Finish zone must recognize its center")
+	assert(!main.level.is_in_finish(main.level.gurney_spawn()), "Start must not count as a finish")
 	main.network.offline()
 	await physics_frame
 	main.players[1].set_physics_process(false)
@@ -22,5 +24,10 @@ func _init() -> void:
 	for frame in 90:
 		await physics_frame
 	assert(main.gurney.global_position.z < start_z - 0.2, "Combined push input must move the shared gurney")
+	main._finish_run(true, "Test delivery")
+	assert(main.game_state == main.GameState.WON, "Finish should enter the won state")
+	assert(main.hud.result_panel.visible, "A result should be shown to the player")
+	main._restart_run()
+	assert(main.game_state == main.GameState.RUNNING, "Restart should begin a new run")
 	print("Milestone 1 smoke test passed")
 	quit(0)

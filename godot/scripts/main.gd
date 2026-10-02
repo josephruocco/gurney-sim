@@ -17,6 +17,10 @@ var sync_accumulator := 0.0
 var game_camera: Camera3D
 var received_world_sync := false
 var camera_look_target := Vector3.ZERO
+enum GameState { RUNNING, WON, LOST }
+var game_state := GameState.RUNNING
+var run_time := 0.0
+var danger_time := 0.0
 
 func _ready() -> void:
 	network = NetworkManagerScript.new(); add_child(network)
@@ -90,19 +94,26 @@ func _physics_process(delta: float) -> void:
 	camera_look_target = camera_look_target.lerp(desired_look, 1.0 - exp(-7.0 * delta))
 	game_camera.fov = lerpf(game_camera.fov, 48.0 + speed_factor * 8.0, 1.0 - exp(-3.0 * delta))
 	game_camera.look_at(camera_look_target)
-	gurney.freeze = !multiplayer.is_server()
-	patient.freeze = !multiplayer.is_server()
+	gurney.freeze = !multiplayer.is_server() or game_state != GameState.RUNNING
+	patient.freeze = !multiplayer.is_server() or game_state != GameState.RUNNING
 	if !multiplayer.is_server(): return
+	if game_state != GameState.RUNNING:
+		if Input.is_action_just_pressed("restart"): _restart_run.rpc()
+		return
+	run_time += delta
+	hud.set_run_time(run_time)
+	_evaluate_objective(delta)
+	if game_state != GameState.RUNNING: return
 	sync_accumulator += delta
 	if sync_accumulator < 0.05: return
 	sync_accumulator = 0.0
 	var player_states := {}
 	for id in players:
 		player_states[id] = {"transform": players[id].global_transform, "pushing": players[id].pushing}
-	_sync_world.rpc(gurney.global_transform, gurney.linear_velocity, gurney.angular_velocity, patient.global_transform, patient.linear_velocity, patient.angular_velocity, player_states)
+	_sync_world.rpc(gurney.global_transform, gurney.linear_velocity, gurney.angular_velocity, patient.global_transform, patient.linear_velocity, patient.angular_velocity, player_states, run_time)
 
 @rpc("authority", "call_remote", "unreliable_ordered", 2)
-func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_angular: Vector3, patient_transform: Transform3D, patient_linear: Vector3, patient_angular: Vector3, player_states: Dictionary) -> void:
+func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_angular: Vector3, patient_transform: Transform3D, patient_linear: Vector3, patient_angular: Vector3, player_states: Dictionary, synced_time: float) -> void:
 	if multiplayer.is_server(): return
 	if !received_world_sync:
 		received_world_sync = true
@@ -113,6 +124,8 @@ func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_a
 	patient.global_transform = patient_transform
 	patient.linear_velocity = patient_linear
 	patient.angular_velocity = patient_angular
+	run_time = synced_time
+	hud.set_run_time(run_time)
 	for id in player_states:
 		if players.has(id) and !players[id].is_multiplayer_authority():
 			var state: Dictionary = player_states[id]
@@ -122,3 +135,49 @@ func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_a
 func _update_hud(danger: float) -> void:
 	var local_patient: Vector3 = gurney.global_transform.affine_inverse() * patient.global_position
 	hud.set_telemetry(gurney.speed_kph(), danger, abs(local_patient.x))
+
+func _evaluate_objective(delta: float) -> void:
+	var patient_distance := patient.global_position.distance_to(gurney.global_position)
+	var upright := absf(gurney.global_basis.y.dot(Vector3.UP))
+	var danger := clampf((1.0 - upright) / 0.45, 0.0, 1.0)
+	danger_time = danger_time + delta if danger > 0.92 else maxf(0.0, danger_time - delta * 2.0)
+	if level.is_in_finish(gurney.global_position) and patient_distance < 3.0:
+		_finish_run(true, "Safely discharged at street level")
+	elif patient.global_position.y < -3.0 or patient_distance > 5.0:
+		_finish_run(false, "The patient left the gurney")
+	elif gurney.global_position.y < -4.0:
+		_finish_run(false, "The gurney went over the edge")
+	elif danger_time > 1.5:
+		_finish_run(false, "The gurney tipped over")
+
+func _finish_run(won: bool, reason: String) -> void:
+	if game_state != GameState.RUNNING: return
+	game_state = GameState.WON if won else GameState.LOST
+	_sync_game_result.rpc(won, reason, run_time)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_game_result(won: bool, reason: String, seconds: float) -> void:
+	game_state = GameState.WON if won else GameState.LOST
+	run_time = seconds
+	hud.set_run_time(run_time)
+	hud.show_result(won, reason, seconds)
+
+@rpc("authority", "call_local", "reliable")
+func _restart_run() -> void:
+	game_state = GameState.RUNNING
+	run_time = 0.0
+	danger_time = 0.0
+	gurney.global_position = level.gurney_spawn()
+	gurney.global_rotation = Vector3.ZERO
+	gurney.linear_velocity = Vector3.ZERO
+	gurney.angular_velocity = Vector3.ZERO
+	patient.global_position = level.patient_spawn()
+	patient.global_rotation = Vector3.ZERO
+	patient.linear_velocity = Vector3.ZERO
+	patient.angular_velocity = Vector3.ZERO
+	for id in players:
+		players[id].global_position = level.player_spawn(id)
+		players[id].pushing = false
+		players[id].velocity = Vector3.ZERO
+	hud.hide_result()
+	hud.set_run_time(0.0)

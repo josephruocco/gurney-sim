@@ -7,6 +7,9 @@ var balance_bar: ProgressBar
 var host_button: Button
 var join_button: Button
 var solo_button: Button
+var timer_label: Label
+var result_panel: PanelContainer
+var result_label: Label
 
 func _ready() -> void:
 	var panel := PanelContainer.new()
@@ -36,6 +39,11 @@ func _ready() -> void:
 	objective.add_theme_color_override("font_color", Color("#617d87"))
 	objective.add_theme_font_size_override("font_size", 12)
 	stack.add_child(objective)
+	timer_label = Label.new()
+	timer_label.text = "DELIVERY  00:00.0"
+	timer_label.add_theme_color_override("font_color", Color("#31596c"))
+	timer_label.add_theme_font_size_override("font_size", 16)
+	stack.add_child(timer_label)
 	status_label = Label.new()
 	status_label.text = "Choose Solo, Host, or Join"
 	status_label.add_theme_color_override("font_color", Color("#d97058"))
@@ -78,7 +86,41 @@ func _ready() -> void:
 	help.text = "WASD move • E grab/release gurney • Space dig in heels"
 	help.add_theme_color_override("font_color", Color("#617d87"))
 	stack.add_child(help)
+	_build_result_panel()
+
+func _build_result_panel() -> void:
+	result_panel = PanelContainer.new()
+	result_panel.visible = false
+	result_panel.set_anchors_preset(Control.PRESET_CENTER)
+	result_panel.position = Vector2(-230, -90)
+	result_panel.custom_minimum_size = Vector2(460, 180)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fff4de", 0.97)
+	style.border_color = Color("#31596c")
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(18)
+	result_panel.add_theme_stylebox_override("panel", style)
+	add_child(result_panel)
+	result_label = Label.new()
+	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	result_label.add_theme_color_override("font_color", Color("#31596c"))
+	result_label.add_theme_font_size_override("font_size", 24)
+	result_panel.add_child(result_label)
 
 func set_telemetry(speed: float, danger: float, patient_offset: float) -> void:
 	telemetry_label.text = "Speed %d km/h   Patient drift %.2f m" % [roundi(speed), patient_offset]
 	balance_bar.value = danger * 100.0
+
+func set_run_time(seconds: float) -> void:
+	var minutes := int(seconds) / 60
+	var remaining := fmod(seconds, 60.0)
+	timer_label.text = "DELIVERY  %02d:%04.1f" % [minutes, remaining]
+
+func show_result(won: bool, reason: String, seconds: float) -> void:
+	result_panel.visible = true
+	var heading := "PATIENT DELIVERED!" if won else "SHIFT OVER"
+	result_label.text = "%s\n%s\nTime %02d:%04.1f\n\nHost: press R to try again" % [heading, reason, int(seconds) / 60, fmod(seconds, 60.0)]
+
+func hide_result() -> void:
+	result_panel.visible = false

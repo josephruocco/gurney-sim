@@ -9,6 +9,10 @@ func _ready() -> void:
 func gurney_spawn() -> Vector3: return Vector3(0, 8.85, 10)
 func patient_spawn() -> Vector3: return Vector3(0, 9.6, 10)
 func player_spawn(id: int) -> Vector3: return Vector3((id - 1) * 1.2 - 1.2, 9.0, 14)
+func finish_position() -> Vector3: return Vector3(-29, 0.18, -39)
+func is_in_finish(position_: Vector3) -> bool:
+	var offset := position_ - finish_position()
+	return Vector2(offset.x, offset.z).length() < 3.3 and absf(offset.y) < 2.0
 
 func _material(color: Color, metallic := 0.0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
