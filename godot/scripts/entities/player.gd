@@ -99,6 +99,14 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("interact"):
 		pushing = !pushing if target_gurney and global_position.distance_to(target_gurney.global_position) < 3.2 else false
 	var direction := Vector3(local_input.x, 0.0, local_input.y)
+	var camera := get_viewport().get_camera_3d()
+	if camera:
+		var camera_right := camera.global_basis.x
+		var camera_forward := -camera.global_basis.z
+		camera_right.y = 0.0
+		camera_forward.y = 0.0
+		direction = camera_right.normalized() * local_input.x + camera_forward.normalized() * -local_input.y
+		if direction.length_squared() > 1.0: direction = direction.normalized()
 	if pushing and target_gurney:
 		var side := -0.82 if peer_id % 2 == 1 else 0.82
 		var row := float((peer_id - 1) / 2)

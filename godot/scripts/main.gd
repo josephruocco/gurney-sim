@@ -16,6 +16,7 @@ var players: Dictionary = {}
 var sync_accumulator := 0.0
 var game_camera: Camera3D
 var received_world_sync := false
+var camera_look_target := Vector3.ZERO
 
 func _ready() -> void:
 	network = NetworkManagerScript.new(); add_child(network)
@@ -39,11 +40,12 @@ func _ready() -> void:
 
 func _build_camera() -> void:
 	game_camera = Camera3D.new()
-	game_camera.position = Vector3(6.0, 4.8, 9.5)
-	game_camera.fov = 43.0
+	game_camera.position = Vector3(6.5, 5.6, 10.5)
+	game_camera.fov = 48.0
 	game_camera.current = true
 	add_child(game_camera)
-	game_camera.look_at(Vector3(0, 0.8, 0.0))
+	camera_look_target = Vector3(0, 0.8, 0.0)
+	game_camera.look_at(camera_look_target)
 
 func _spawn_physics() -> void:
 	gurney = SharedGurneyScript.new()
@@ -75,9 +77,19 @@ func _spawn_player_everywhere(id: int) -> void:
 	print("ROSTER local=%d spawned=%d total=%d" % [multiplayer.get_unique_id(), id, players.size()])
 
 func _physics_process(delta: float) -> void:
-	var desired_camera := gurney.global_position + Vector3(6.0, 4.8, 9.5)
-	game_camera.global_position = game_camera.global_position.lerp(desired_camera, minf(1.0, delta * 4.0))
-	game_camera.look_at(gurney.global_position + Vector3(0, 0.7, -2.5))
+	var flat_velocity := Vector3(gurney.linear_velocity.x, 0.0, gurney.linear_velocity.z)
+	var speed_factor := clampf(flat_velocity.length() / 9.0, 0.0, 1.0)
+	var forward := -gurney.global_basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var camera_side := gurney.global_basis.x.normalized() * 4.8
+	var desired_camera := gurney.global_position - forward * (9.0 + speed_factor * 2.5) + camera_side + Vector3.UP * (5.2 + speed_factor)
+	var follow_weight := 1.0 - exp(-5.5 * delta)
+	game_camera.global_position = game_camera.global_position.lerp(desired_camera, follow_weight)
+	var desired_look := gurney.global_position + Vector3.UP * 0.65 + forward * (2.6 + speed_factor * 3.0)
+	camera_look_target = camera_look_target.lerp(desired_look, 1.0 - exp(-7.0 * delta))
+	game_camera.fov = lerpf(game_camera.fov, 48.0 + speed_factor * 8.0, 1.0 - exp(-3.0 * delta))
+	game_camera.look_at(camera_look_target)
 	gurney.freeze = !multiplayer.is_server()
 	patient.freeze = !multiplayer.is_server()
 	if !multiplayer.is_server(): return
