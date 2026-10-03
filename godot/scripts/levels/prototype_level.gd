@@ -6,8 +6,8 @@ const TrafficCarScript = preload("res://scripts/levels/traffic_car.gd")
 func _ready() -> void:
 	_build_environment()
 
-func gurney_spawn() -> Vector3: return Vector3(0, 9.48, 10)
-func patient_spawn() -> Vector3: return Vector3(0, 10.23, 10)
+func gurney_spawn() -> Vector3: return Vector3(0, 9.52, 10)
+func patient_spawn() -> Vector3: return Vector3(0, 10.27, 10)
 func player_spawn_slot(slot: int) -> Vector3: return Vector3(float(slot) * 1.2 - 1.2, 9.0, 14)
 func finish_position() -> Vector3: return Vector3(-29, 0.18, -39)
 func is_in_finish(position_: Vector3) -> bool:

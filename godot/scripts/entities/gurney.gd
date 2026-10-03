@@ -52,6 +52,12 @@ func _build_model() -> void:
 		rail.position = Vector3(x, 0.28, 0)
 		rail.material_override = frame_material
 		add_child(rail)
+		var rail_collision := CollisionShape3D.new()
+		var rail_shape := BoxShape3D.new()
+		rail_shape.size = Vector3(0.12, 0.44, 3.25)
+		rail_collision.shape = rail_shape
+		rail_collision.position = Vector3(x, 0.28, 0)
+		add_child(rail_collision)
 	var headboard := MeshInstance3D.new()
 	var headboard_mesh := BoxMesh.new()
 	headboard_mesh.size = Vector3(1.72, 0.72, 0.1)
@@ -59,6 +65,13 @@ func _build_model() -> void:
 	headboard.position = Vector3(0, 0.34, 1.62)
 	headboard.material_override = frame_material
 	add_child(headboard)
+	for z in [-1.62, 1.62]:
+		var end_collision := CollisionShape3D.new()
+		var end_shape := BoxShape3D.new()
+		end_shape.size = Vector3(1.72, 0.5, 0.12)
+		end_collision.shape = end_shape
+		end_collision.position = Vector3(0, 0.25, z)
+		add_child(end_collision)
 	# A visible lower carriage separates the bed from the floor and reads as a real gurney.
 	for size_and_position in [
 		[Vector3(1.35, 0.09, 0.09), Vector3(0, -0.82, -1.16)],
@@ -75,6 +88,12 @@ func _build_model() -> void:
 		add_child(support)
 	for x in [-0.68, 0.68]:
 		for z in [-1.35, 1.35]:
+			var wheel_collision := CollisionShape3D.new()
+			var wheel_shape := SphereShape3D.new()
+			wheel_shape.radius = 0.22
+			wheel_collision.shape = wheel_shape
+			wheel_collision.position = Vector3(x, -1.0, z)
+			add_child(wheel_collision)
 			var caster := Node3D.new()
 			caster.position = Vector3(x, 0, z)
 			add_child(caster)

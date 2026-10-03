@@ -5,8 +5,14 @@ func _ready() -> void:
 	collision_layer = 8
 	collision_mask = 3
 	mass = 4.5
-	linear_damp = 0.15
-	angular_damp = 0.8
+	linear_damp = 1.1
+	angular_damp = 2.2
+	continuous_cd = true
+	var grip := PhysicsMaterial.new()
+	grip.friction = 0.72
+	grip.rough = true
+	grip.bounce = 0.02
+	physics_material_override = grip
 	_build_model()
 
 func _material(color: Color) -> StandardMaterial3D:

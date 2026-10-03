@@ -268,9 +268,11 @@ func _sync_world(gurney_transform: Transform3D, gurney_linear: Vector3, gurney_a
 
 func _interpolate_remote_world(delta: float) -> void:
 	var weight := 1.0 - exp(-16.0 * delta)
-	gurney.global_position = gurney.global_position.lerp(gurney_network_target.origin, weight)
+	if gurney.global_position.distance_to(gurney_network_target.origin) > 0.01:
+		gurney.global_position = gurney.global_position.lerp(gurney_network_target.origin, weight)
 	gurney.global_basis = Basis(gurney.global_basis.get_rotation_quaternion().slerp(gurney_network_target.basis.get_rotation_quaternion(), weight))
-	patient.global_position = patient.global_position.lerp(patient_network_target.origin, weight)
+	if patient.global_position.distance_to(patient_network_target.origin) > 0.01:
+		patient.global_position = patient.global_position.lerp(patient_network_target.origin, weight)
 	patient.global_basis = Basis(patient.global_basis.get_rotation_quaternion().slerp(patient_network_target.basis.get_rotation_quaternion(), weight))
 
 func _update_hud(danger: float) -> void:

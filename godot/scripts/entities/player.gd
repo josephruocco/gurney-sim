@@ -109,15 +109,18 @@ func apply_network_transform(next_transform: Transform3D) -> void:
 	network_target = next_transform
 
 func _apply_pose(delta: float) -> void:
-	gait_time += delta * (10.0 if pushing else 7.0)
-	var stride := sin(gait_time) * (0.42 if pushing else minf(0.32, Vector2(velocity.x, velocity.z).length() * 0.06))
+	var input_motion := local_input.length() > 0.08
+	var body_speed := Vector2(velocity.x, velocity.z).length()
+	var moving := input_motion or (!pushing and body_speed > 0.25)
+	if moving: gait_time += delta * (10.0 if pushing else 7.0)
+	var stride_target := sin(gait_time) * (0.42 if pushing else minf(0.32, body_speed * 0.06)) if moving else 0.0
 	for index in legs.size():
-		legs[index].rotation.x = stride * (-1.0 if index == 0 else 1.0)
+		var target := stride_target * (-1.0 if index == 0 else 1.0)
+		legs[index].rotation.x = lerpf(legs[index].rotation.x, target, minf(1.0, delta * 12.0))
 	for index in arms.size():
-		arms[index].rotation.x = -1.05 if pushing else -stride * (-1.0 if index == 0 else 1.0)
+		arms[index].rotation.x = -1.05 if pushing else -stride_target * (-1.0 if index == 0 else 1.0)
 		arms[index].position.z = -0.22 if pushing else 0.0
 	visual_root.rotation.x = -0.16 if pushing else 0.0
-	var moving := Vector2(velocity.x, velocity.z).length() > 0.25 or pushing
 	visual_root.position.y = absf(sin(gait_time * 2.0)) * 0.045 if moving else lerpf(visual_root.position.y, 0.0, minf(1.0, delta * 8.0))
 	body_mesh.scale.y = 0.9 - (absf(sin(gait_time * 2.0)) * 0.035 if moving else 0.0)
 
@@ -125,7 +128,8 @@ func _physics_process(delta: float) -> void:
 	if !is_multiplayer_authority():
 		if has_network_target:
 			var weight := 1.0 - exp(-18.0 * delta)
-			global_position = global_position.lerp(network_target.origin, weight)
+			if global_position.distance_to(network_target.origin) > 0.015:
+				global_position = global_position.lerp(network_target.origin, weight)
 			var current_rotation := global_basis.get_rotation_quaternion()
 			var target_rotation := network_target.basis.get_rotation_quaternion()
 			global_basis = Basis(current_rotation.slerp(target_rotation, weight))
@@ -133,7 +137,9 @@ func _physics_process(delta: float) -> void:
 		return
 	local_input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	brake_strength = Input.get_action_strength("brake")
-	if Input.is_action_just_pressed("interact"):
+	var main := get_parent()
+	var run_active: bool = main.game_state == main.GameState.RUNNING
+	if Input.is_action_just_pressed("interact") and run_active:
 		var was_pushing := pushing
 		pushing = !pushing if target_gurney and global_position.distance_to(target_gurney.global_position) < 3.2 else false
 		if pushing != was_pushing: grab_changed.emit(pushing)
@@ -149,8 +155,9 @@ func _physics_process(delta: float) -> void:
 	if pushing and target_gurney:
 		var side := -0.82 if crew_slot % 2 == 0 else 0.82
 		var row := float(crew_slot / 2)
-		var attachment: Vector3 = target_gurney.global_transform * Vector3(side, 0.58, 2.0 + row * 0.55)
-		global_position = global_position.lerp(attachment, minf(1.0, delta * 12.0))
+		var attachment: Vector3 = target_gurney.global_transform * Vector3(side, -0.42, 2.0 + row * 0.55)
+		if global_position.distance_to(attachment) > 0.01:
+			global_position = global_position.lerp(attachment, minf(1.0, delta * 16.0))
 		rotation.y = lerp_angle(rotation.y, target_gurney.rotation.y, minf(1.0, delta * 12.0))
 		velocity = Vector3.ZERO
 	elif direction.length_squared() > 0.02:
@@ -165,11 +172,11 @@ func _physics_process(delta: float) -> void:
 
 @rpc("any_peer", "call_local", "unreliable", 1)
 func _submit_input(input_vector: Vector2, braking: float, is_pushing: bool, submitted_transform: Transform3D) -> void:
+	var main := get_parent()
 	if !multiplayer.is_server() or !target_gurney: return
 	var sender := multiplayer.get_remote_sender_id() if multiplayer.get_remote_sender_id() else peer_id
 	var submitted_position := submitted_transform.origin if sender != 1 else global_position
 	target_gurney.set_player_input(sender, input_vector, braking, is_pushing, submitted_position)
-	var main := get_parent()
 	if main.players.has(sender) and sender != 1:
 		main.players[sender].apply_network_transform(submitted_transform)
 		main.players[sender].apply_synced_pose(is_pushing)
