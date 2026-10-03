@@ -5,7 +5,7 @@ func _init() -> void:
 	var main: Node = scene.instantiate()
 	root.add_child(main)
 	await process_frame
-	main.network.offline()
+	main._start_solo()
 	for frame in 20:
 		await process_frame
 	var image := root.get_texture().get_image()

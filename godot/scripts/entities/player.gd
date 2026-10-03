@@ -60,30 +60,10 @@ func _build_body() -> void:
 	visual_root = Node3D.new()
 	visual_root.name = "Character"
 	add_child(visual_root)
-	var shirt := _material(player_color)
-	var skin := _material(Color("#f0c7a5"))
-	var ink := _material(Color("#253547"))
-	var hair := _material(Color("#554337"))
-	body_mesh = _sphere(visual_root, "Shirt", Vector3(0.92, 0.9, 0.76), Vector3(0, 0.0, 0), shirt)
-	_sphere(visual_root, "Head", Vector3(0.84, 0.9, 0.72), Vector3(0, 0.78, 0), skin)
-	for side in [-1.0, 1.0]:
-		_sphere(visual_root, "Sleeve", Vector3(0.3, 0.38, 0.3), Vector3(side * 0.5, 0.12, 0), shirt)
-		arms.append(_sphere(visual_root, "Arm", Vector3(0.2, 0.42, 0.2), Vector3(side * 0.56, -0.17, 0), skin))
-		legs.append(_sphere(visual_root, "Leg", Vector3(0.22, 0.48, 0.25), Vector3(side * 0.22, -0.73, 0), skin))
-		_sphere(visual_root, "Eye", Vector3(0.11, 0.022, 0.026), Vector3(side * 0.17, 0.88, -0.37), ink)
-	_sphere(visual_root, "Nose", Vector3(0.22, 0.19, 0.19), Vector3(0, 0.73, -0.39), skin)
-	for x in [-0.22, -0.06, 0.11, 0.24]:
-		var strand := MeshInstance3D.new()
-		strand.name = "Hair"
-		var strand_mesh := CylinderMesh.new()
-		strand_mesh.top_radius = 0.01
-		strand_mesh.bottom_radius = 0.01
-		strand_mesh.height = 0.13
-		strand.mesh = strand_mesh
-		strand.position = Vector3(x, 1.28 - absf(x) * 0.35, 0)
-		strand.rotation_degrees.z = x * 45.0
-		strand.material_override = hair
-		visual_root.add_child(strand)
+	var model: Dictionary = preload("res://scripts/entities/mascot_model.gd").build(visual_root, player_color)
+	body_mesh = model.body
+	arms.assign(model.arms)
+	legs.assign(model.legs)
 	nameplate = Label3D.new()
 	nameplate.position = Vector3(0, 1.75, 0)
 	nameplate.font_size = 48
@@ -122,7 +102,7 @@ func _apply_pose(delta: float) -> void:
 		arms[index].position.z = -0.22 if pushing else 0.0
 	visual_root.rotation.x = -0.16 if pushing else 0.0
 	visual_root.position.y = absf(sin(gait_time * 2.0)) * 0.045 if moving else lerpf(visual_root.position.y, 0.0, minf(1.0, delta * 8.0))
-	body_mesh.scale.y = 0.9 - (absf(sin(gait_time * 2.0)) * 0.035 if moving else 0.0)
+	body_mesh.scale.y = 1.0 - (absf(sin(gait_time * 2.0)) * 0.035 if moving else 0.0)
 
 func _physics_process(delta: float) -> void:
 	if !is_multiplayer_authority():
