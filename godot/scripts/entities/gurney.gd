@@ -4,7 +4,7 @@ extends RigidBody3D
 signal balance_changed(tilt: float, danger: float)
 
 const PUSH_FORCE := 120.0
-const STEER_TORQUE := 18.0
+const STEER_TORQUE := 65.0
 const BRAKE_DRAG := 8.0
 var player_inputs: Dictionary = {}
 var patient: RigidBody3D
@@ -133,6 +133,7 @@ func _process(delta: float) -> void:
 		caster.rotation.y = lerp_angle(caster.rotation.y, visual_steering, minf(1.0, delta * 9.0))
 
 func set_player_input(id: int, input_vector: Vector2, braking: float, pushing: bool, position: Vector3) -> void:
+	if pushing and input_vector.length_squared() > 0.001: sleeping = false
 	player_inputs[id] = {"move": input_vector, "brake": braking, "push": pushing, "position": position}
 
 func remove_player(id: int) -> void:
