@@ -5,8 +5,10 @@ extends AnimatableBody3D
 @export var end_x := 7.0
 @export var speed := 3.2
 var direction := 1.0
+var travel_x := 0.0
 
 func _ready() -> void:
+	travel_x = position.x
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(2.0, 1.25, 4.0)
@@ -32,10 +34,11 @@ func _ready() -> void:
 	add_child(reverse_lights)
 
 func _physics_process(delta: float) -> void:
-	position.x += direction * speed * delta
-	if position.x >= end_x:
-		position.x = end_x
+	travel_x += direction * speed * delta
+	if travel_x >= end_x:
+		travel_x = end_x
 		direction = -1.0
-	elif position.x <= start_x:
-		position.x = start_x
+	elif travel_x <= start_x:
+		travel_x = start_x
 		direction = 1.0
+	position.x = travel_x
