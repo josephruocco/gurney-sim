@@ -147,10 +147,10 @@ func _column(position_: Vector3, height: float) -> void:
 
 func _build_environment() -> void:
 	_surface("RoofDeck", Vector3(24, 0.55, 26), Vector3(0, 8.0, 8), Vector3.ZERO, Color("#5c7079"))
-	_surface("RampOne", Vector3(7, 0.55, 19), Vector3(0, 6.0, -11), Vector3(deg_to_rad(-13), 0, 0), Color("#687d86"))
+	_surface("RampOne", Vector3(7, 0.55, 16.29), Vector3(0, 5.95, -12.25), Vector3(deg_to_rad(-14.6), 0, 0), Color("#687d86"))
 	_surface("MiddleDeck", Vector3(25, 0.55, 15), Vector3(-1, 3.9, -27), Vector3.ZERO, Color("#5c7079"))
 	_surface("MiddleCeiling", Vector3(25, 0.35, 15), Vector3(-1, 7.55, -27), Vector3.ZERO, Color("#485b64"))
-	_surface("RampTwo", Vector3(18, 0.55, 7), Vector3(-14, 1.9, -27), Vector3(0, 0, deg_to_rad(13)), Color("#687d86"))
+	_surface("RampTwo", Vector3(11.93, 0.55, 7), Vector3(-18.5, 1.875, -27), Vector3(0, 0, deg_to_rad(20.2)), Color("#687d86"))
 	_surface("StreetDeck", Vector3(21, 0.55, 24), Vector3(-29, -0.15, -31), Vector3.ZERO, Color("#4d626b"))
 	_surface("BalanceLedge", Vector3(2.4, 0.42, 16), Vector3(-5.5, 3.95, -36), Vector3.ZERO, Color("#d97058"))
 	# Parking paint and a coral route line keep the path legible at gameplay speed.
@@ -183,7 +183,7 @@ func _build_environment() -> void:
 	traffic.start_x = -7.0
 	traffic.end_x = 7.0
 	add_child(traffic)
-	_surface("FinishZone", Vector3(7, 0.08, 5), Vector3(-29, 0.18, -39), Vector3.ZERO, Color("#8dbb8e"))
+	_decorative_box("FinishZone", Vector3(7, 0.02, 5), Vector3(-29, 0.14, -39), Color("#8dbb8e"))
 	for x in [-32.5, -25.5]: _cone(Vector3(x, 0.2, -36.5))
 	for i in 14:
 		var side := -1.0 if i % 2 == 0 else 1.0
