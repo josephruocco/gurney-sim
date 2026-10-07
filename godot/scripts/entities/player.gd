@@ -155,6 +155,7 @@ func _submit_input(input_vector: Vector2, braking: float, is_pushing: bool, subm
 	var main := get_parent()
 	if !multiplayer.is_server() or !target_gurney: return
 	var sender := multiplayer.get_remote_sender_id() if multiplayer.get_remote_sender_id() else peer_id
+	if sender != peer_id: return
 	var submitted_position := submitted_transform.origin if sender != 1 else global_position
 	target_gurney.set_player_input(sender, input_vector, braking, is_pushing, submitted_position)
 	if main.players.has(sender) and sender != 1:

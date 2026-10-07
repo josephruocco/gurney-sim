@@ -1,0 +1,18 @@
+[Unit]
+Description=Gurney Simulator room relay
+After=network-online.target
+
+[Service]
+User=gurney
+WorkingDirectory=/opt/gurney-relay
+Environment=PORT=9080
+ExecStart=/usr/local/bin/godot --headless --path /opt/gurney-relay --script res://server.gd
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

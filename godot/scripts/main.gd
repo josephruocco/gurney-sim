@@ -39,10 +39,31 @@ func _ready() -> void:
 	_spawn_physics()
 	network.peer_ready.connect(_server_peer_ready)
 	network.peer_left.connect(_remove_peer)
+	network.room_failed.connect(func(message: String):
+		game_state = GameState.WAITING
+		hud.show_lobby()
+		hud.set_lobby_connected(false)
+		hud.set_internet_status(message + " — restart to reconnect")
+		for player in players.values(): player.set_physics_process(false)
+	)
+	network.room_created.connect(func(code: String):
+		hud.room_input.text = code
+		hud.set_internet_status("Share room code: " + code)
+		print("ROOM_CODE ", code)
+	)
+	hud.create_room_button.pressed.connect(func(): _online_room(""))
+	hud.join_room_button.pressed.connect(func():
+		if hud.room_input.text.strip_edges().is_empty():
+			hud.status_label.text = "Enter your friend's room code"
+		else: _online_room(hud.room_input.text.strip_edges().to_upper())
+	)
 	network.public_endpoint.connect(hud.set_internet_status)
 	network.connection_message.connect(func(message: String):
 		hud.status_label.text = message
 		print("NETWORK ", message)
+		if message == "Room host connected":
+			_register_name(_chosen_name())
+			if auto_ready: _set_ready(true)
 		if message.begins_with("Connected as player"):
 			_register_name.rpc_id(1, _chosen_name())
 			if auto_ready: _set_ready.rpc_id(1, true)
@@ -54,7 +75,9 @@ func _ready() -> void:
 	gurney.balance_changed.connect(func(_tilt: float, danger: float): _update_hud(danger))
 	var args := OS.get_cmdline_user_args()
 	auto_ready = "--autostart" in args
-	if "--host" in args: _host_lobby()
+	if "--room-create" in args: _online_room("")
+	elif "--room-join" in args: _online_room(OS.get_environment("GURNEY_ROOM_CODE"))
+	elif "--host" in args: _host_lobby()
 	elif "--join" in args: _join_lobby()
 	elif "--solo" in args: _start_solo()
 
@@ -126,6 +149,7 @@ func _server_peer_ready(id: int) -> void:
 	_broadcast_lobby.rpc_id(id, player_names, ready_players)
 
 func _remove_peer(id: int) -> void:
+	gurney.remove_player(id)
 	if players.has(id):
 		players[id].queue_free()
 		players.erase(id)
@@ -184,6 +208,7 @@ func _apply_lobby_state(names: Dictionary, ready: Dictionary) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _start_run() -> void:
+	if multiplayer.is_server(): multiplayer.multiplayer_peer.refuse_new_connections = true
 	game_state = GameState.RUNNING
 	run_time = 0.0
 	danger_time = 0.0
@@ -329,3 +354,10 @@ func _restart_run() -> void:
 		players[id].velocity = Vector3.ZERO
 	hud.hide_result()
 	hud.set_run_time(0.0)
+
+func _online_room(code: String) -> void:
+	if players.size() > 0:
+		hud.status_label.text = "Restart the game before changing sessions"
+		return
+	if network.connect_room(hud.relay_input.text.strip_edges(), code) == OK:
+		hud.set_lobby_connected(true)

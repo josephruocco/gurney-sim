@@ -69,3 +69,26 @@ func _on_peer_connected(id: int) -> void:
 func _on_peer_disconnected(id: int) -> void:
 	connection_message.emit("Player %d left" % id)
 	peer_left.emit(id)
+
+signal room_failed(message: String)
+signal room_created(code: String)
+func connect_room(url: String, code: String) -> Error:
+	if !url.begins_with("wss://") and !url.begins_with("ws://127.0.0.1:"):
+		connection_message.emit("Enter a secure wss:// relay address")
+		return ERR_INVALID_PARAMETER
+	var peer := preload("res://scripts/network/room_peer.gd").new()
+	peer.failed.connect(func(message: String):
+		connection_message.emit(message)
+		room_failed.emit(message)
+	)
+	peer.room_ready.connect(func(room_code: String):
+		room_created.emit(room_code)
+		if peer.get_unique_id() == 1:
+			peer_ready.emit(1)
+			connection_message.emit("Room host connected")
+	)
+	var error := peer.connect_room(url, code)
+	if error == OK:
+		multiplayer.multiplayer_peer = peer
+		connection_message.emit("Connecting to room relay…")
+	return error

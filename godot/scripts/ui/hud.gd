@@ -16,6 +16,10 @@ var roster_label: Label
 var ready_button: Button
 var lobby_panel: PanelContainer
 var internet_label: Label
+var relay_input: LineEdit
+var room_input: LineEdit
+var create_room_button: Button
+var join_room_button: Button
 
 func _ready() -> void:
 	var panel := PanelContainer.new()
@@ -94,6 +98,7 @@ func _ready() -> void:
 	stack.add_child(help)
 	_build_result_panel()
 	_build_lobby_panel()
+	_build_room_controls()
 
 func _field(placeholder: String, value: String) -> LineEdit:
 	var field := LineEdit.new()
@@ -202,3 +207,23 @@ func show_result(won: bool, reason: String, seconds: float) -> void:
 
 func hide_result() -> void:
 	result_panel.visible = false
+
+func _build_room_controls() -> void:
+	var panel := VBoxContainer.new()
+	panel.position = Vector2(510, 18)
+	panel.custom_minimum_size = Vector2(340, 0)
+	add_child(panel)
+	var label := Label.new()
+	label.text = "PLAY ONLINE — ROOM CODE"
+	panel.add_child(label)
+	relay_input = _field("Relay server (wss://…)", OS.get_environment("GURNEY_RELAY_URL"))
+	panel.add_child(relay_input)
+	room_input = _field("Room code from your friend", "")
+	room_input.max_length = 8
+	panel.add_child(room_input)
+	create_room_button = Button.new()
+	create_room_button.text = "Create room"
+	panel.add_child(create_room_button)
+	join_room_button = Button.new()
+	join_room_button.text = "Join room"
+	panel.add_child(join_room_button)
