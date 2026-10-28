@@ -2,3 +2,5 @@
 !project.godot
 !server.gd
 !Dockerfile
+!nginx.conf.template
+!start.sh

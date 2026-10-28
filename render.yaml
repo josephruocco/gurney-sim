@@ -8,8 +8,8 @@ services:
     dockerfilePath: ./relay/Dockerfile
     dockerContext: ./relay
     autoDeployTrigger: off
+    healthCheckPath: /healthz
     envVars:
       - key: PORT
         value: 10000
-# Default TCP health check: the relay serves WebSocket upgrades, not an HTTP health route.
 # Keep one instance because room membership is held in memory.

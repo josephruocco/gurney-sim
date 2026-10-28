@@ -1,0 +1,28 @@
+worker_processes 1;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+events { worker_connections 1024; }
+http {
+    access_log /dev/stdout;
+    client_body_temp_path /tmp/nginx-body;
+    proxy_temp_path /tmp/nginx-proxy;
+    server {
+        listen ${PORT};
+        location = /healthz {
+            default_type text/plain;
+            return 200 "ok\n";
+        }
+        location / {
+            # Ordinary browser requests and platform probes never reach Godot.
+            if ($http_upgrade !~* "^websocket$") { return 200 "Gurney relay online\n"; }
+            proxy_pass http://127.0.0.1:9080;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+            proxy_buffering off;
+        }
+    }
+}

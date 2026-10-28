@@ -7,13 +7,14 @@ RUN curl -fL --retry 3 "https://github.com/godotengine/godot-builds/releases/dow
     && chmod +x /usr/local/bin/godot
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libfontconfig1 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libgl1 libasound2 libpulse0 \
+RUN apt-get update && apt-get install -y --no-install-recommends nginx gettext-base ca-certificates libfontconfig1 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libgl1 libasound2 libpulse0 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 gurney
 COPY --from=download /usr/local/bin/godot /usr/local/bin/godot
 WORKDIR /app
 COPY --chown=gurney:gurney project.godot server.gd ./
+COPY --chown=gurney:gurney nginx.conf.template start.sh ./
 USER gurney
 ENV PORT=10000
 EXPOSE 10000
-CMD ["godot", "--headless", "--path", "/app", "--script", "res://server.gd"]
+CMD ["bash", "/app/start.sh"]

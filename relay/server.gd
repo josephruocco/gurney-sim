@@ -9,7 +9,8 @@ var serial := 0
 
 func _initialize() -> void:
 	var port := int(OS.get_environment("PORT")) if OS.has_environment("PORT") else 9080
-	var error := server.listen(port, "0.0.0.0")
+	var bind_address := OS.get_environment("BIND_ADDRESS") if OS.has_environment("BIND_ADDRESS") else "0.0.0.0"
+	var error := server.listen(port, bind_address)
 	if error != OK:
 		push_error("Cannot listen: %s" % error)
 		quit(1)

@@ -62,12 +62,14 @@ Use the repository's `render.yaml` Blueprint, or create a Web Service manually:
 - Instance: Starter (paid; review Render's displayed price before creating)
 - Region: Virginia; instance count: 1
 - Environment: `PORT=10000`
-- Health check path: leave blank to use Render's TCP check
+- Health check path: `/healthz`
 - Automatic deploys: disabled (deploying disconnects active rooms)
 
 Render provides TLS and an `onrender.com` address; no Caddy or Namecheap setup
 is required. Once Live, enter `wss://YOUR-SERVICE.onrender.com` in both games.
-A browser GET is not a gameplay health test: use a WebSocket room client.
+A browser GET returns a simple status response. Nginx handles HTTP probes and
+forwards WebSocket upgrades to Godot on a private loopback port. The container
+stops if either process exits. Use a WebSocket room client to verify gameplay.
 The included Docker image downloads official Godot 4.7.2 for Linux x86_64.
 Local Docker build verification requires Docker Desktop to be running.
 
