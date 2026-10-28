@@ -49,3 +49,28 @@ so packet loss can delay movement updates. Internet latency still needs testing.
 
 Transport uses Godot's MultiplayerPeerExtension script packet hooks:
 https://docs.godotengine.org/en/stable/classes/class_multiplayerpeerextension.html
+
+## Render deployment
+
+Use the repository's `render.yaml` Blueprint, or create a Web Service manually:
+
+- Repository: `josephruocco/gurney-sim`, branch `main`
+- Runtime: Docker
+- Root directory: leave blank
+- Dockerfile path: `relay/Dockerfile`
+- Docker build context directory: `relay`
+- Instance: Starter (paid; review Render's displayed price before creating)
+- Region: Virginia; instance count: 1
+- Environment: `PORT=10000`
+- Health check path: leave blank to use Render's TCP check
+- Automatic deploys: disabled (deploying disconnects active rooms)
+
+Render provides TLS and an `onrender.com` address; no Caddy or Namecheap setup
+is required. Once Live, enter `wss://YOUR-SERVICE.onrender.com` in both games.
+A browser GET is not a gameplay health test: use a WebSocket room client.
+The included Docker image downloads official Godot 4.7.2 for Linux x86_64.
+Local Docker build verification requires Docker Desktop to be running.
+
+References:
+- https://render.com/docs/websocket
+- https://render.com/docs/health-checks
