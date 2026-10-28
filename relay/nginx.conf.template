@@ -19,6 +19,8 @@ http {
             # Ordinary browser requests and platform probes never reach Godot.
             if ($http_upgrade !~* "^websocket$") { return 200 "Gurney relay online\n"; }
             proxy_pass http://127.0.0.1:9080;
+            # Distinguish the trusted proxy from platform port-discovery probes.
+            proxy_bind 127.0.0.2;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";

@@ -22,6 +22,12 @@ func send_to(id: int, data: Dictionary) -> void:
 func _process(_delta: float) -> bool:
 	while server.is_connection_available():
 		var tcp := server.take_connection()
+		# Render can probe internal listening ports too. Only the HTTP front end
+		# may initiate a WebSocket handshake in the container deployment.
+		var trusted_proxy := OS.get_environment("TRUSTED_PROXY_ADDRESS")
+		if trusted_proxy != "" and tcp.get_connected_host() != trusted_proxy:
+			tcp.disconnect_from_host()
+			continue
 		if clients.size() >= MAX_CLIENTS:
 			tcp.disconnect_from_host()
 			continue

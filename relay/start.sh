@@ -13,7 +13,7 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 0' TERM INT
-PORT=9080 BIND_ADDRESS=127.0.0.1 godot --headless --path /app --script res://server.gd &
+PORT=9080 BIND_ADDRESS=127.0.0.1 TRUSTED_PROXY_ADDRESS=127.0.0.2 godot --headless --path /app --script res://server.gd &
 pids+=($!)
 nginx -c /tmp/nginx.conf -g 'daemon off;' &
 pids+=($!)
