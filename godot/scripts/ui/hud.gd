@@ -216,7 +216,9 @@ func _build_room_controls() -> void:
 	var label := Label.new()
 	label.text = "PLAY ONLINE — ROOM CODE"
 	panel.add_child(label)
-	relay_input = _field("Relay server (wss://…)", OS.get_environment("GURNEY_RELAY_URL"))
+	var relay_url := OS.get_environment("GURNEY_RELAY_URL").strip_edges()
+	if relay_url.is_empty(): relay_url = "wss://gurney-relay.onrender.com"
+	relay_input = _field("Relay server (wss://…)", relay_url)
 	panel.add_child(relay_input)
 	room_input = _field("Room code from your friend", "")
 	room_input.max_length = 8
