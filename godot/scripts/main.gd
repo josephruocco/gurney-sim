@@ -86,7 +86,13 @@ func _chosen_name() -> String:
 	return cleaned if !cleaned.is_empty() else "Orderly"
 
 func _start_solo() -> void:
+	if !players.is_empty(): return
 	network.offline()
+	_spawn_player_everywhere(2)
+	players[2].is_bot = true
+	players[2].set_multiplayer_authority(1)
+	player_names[2] = "Pip (NPC)"
+	ready_players[2] = true
 	player_names[1] = _chosen_name()
 	ready_players[1] = true
 	_apply_lobby_state(player_names, ready_players)

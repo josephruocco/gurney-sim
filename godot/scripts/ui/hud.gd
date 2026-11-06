@@ -55,7 +55,7 @@ func _ready() -> void:
 	timer_label.add_theme_font_size_override("font_size", 16)
 	stack.add_child(timer_label)
 	status_label = Label.new()
-	status_label.text = "Choose Solo, Host, or Join"
+	status_label.text = "Play now with Pip, or find an online teammate"
 	status_label.add_theme_color_override("font_color", Color("#d97058"))
 	stack.add_child(status_label)
 	telemetry_label = Label.new()
@@ -80,7 +80,7 @@ func _ready() -> void:
 	stack.add_child(balance_bar)
 	var buttons := HBoxContainer.new()
 	stack.add_child(buttons)
-	solo_button = Button.new(); solo_button.text = "Solo"
+	solo_button = Button.new(); solo_button.text = "Play now + NPC"
 	host_button = Button.new(); host_button.text = "Host"
 	join_button = Button.new(); join_button.text = "Join localhost"
 	buttons.add_child(solo_button); buttons.add_child(host_button); buttons.add_child(join_button)

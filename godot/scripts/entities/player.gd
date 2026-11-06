@@ -6,6 +6,7 @@ signal grab_changed(grabbed: bool)
 @export var peer_id := 1
 @export var crew_slot := 0
 @export var player_color := Color("#d97058")
+var is_bot := false
 var pushing := false
 var local_input := Vector2.ZERO
 var brake_strength := 0.0
@@ -105,6 +106,9 @@ func _apply_pose(delta: float) -> void:
 	body_mesh.scale.y = 1.0 - (absf(sin(gait_time * 2.0)) * 0.035 if moving else 0.0)
 
 func _physics_process(delta: float) -> void:
+	if is_bot:
+		_tick_bot(delta)
+		return
 	if !is_multiplayer_authority():
 		if has_network_target:
 			var weight := 1.0 - exp(-18.0 * delta)
@@ -161,3 +165,21 @@ func _submit_input(input_vector: Vector2, braking: float, is_pushing: bool, subm
 	if main.players.has(sender) and sender != 1:
 		main.players[sender].apply_network_transform(submitted_transform)
 		main.players[sender].apply_synced_pose(is_pushing)
+
+# Offline assistant follows the player's intent, never drives away alone.
+func _tick_bot(delta: float) -> void:
+	var main := get_parent()
+	var leader: GurneyPlayer = main.players.get(1)
+	if !leader or !target_gurney: return
+	var active: bool = main.game_state == main.GameState.RUNNING
+	pushing = active
+	local_input = leader.local_input * 0.35 if active and leader.pushing else Vector2.ZERO
+	brake_strength = leader.brake_strength if active else 0.0
+	if active and (!leader.pushing or target_gurney.linear_velocity.length() > 6.0):
+		brake_strength = maxf(brake_strength, 0.25)
+	if active:
+		global_position = target_gurney.global_transform * Vector3(0.82, -0.42, 2.0)
+		rotation.y = target_gurney.rotation.y
+	velocity = Vector3.ZERO
+	target_gurney.set_player_input(peer_id, local_input, brake_strength, pushing, global_position)
+	_apply_pose(delta)
