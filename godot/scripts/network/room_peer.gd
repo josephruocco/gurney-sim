@@ -15,8 +15,8 @@ var hello: Dictionary
 var sent_hello := false
 var started := 0
 
-func connect_room(url: String, code: String) -> Error:
-	hello = {"op": "create" if code.is_empty() else "join", "code": code, "version": 1}
+func connect_room(url: String, code: String, quick_match := false) -> Error:
+	hello = {"op": "match" if quick_match else ("create" if code.is_empty() else "join"), "code": code, "version": 1}
 	var error := socket.connect_to_url(url)
 	if error == OK:
 		status = MultiplayerPeer.CONNECTION_CONNECTING

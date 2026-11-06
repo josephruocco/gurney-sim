@@ -76,3 +76,12 @@ Local Docker build verification requires Docker Desktop to be running.
 References:
 - https://render.com/docs/websocket
 - https://render.com/docs/health-checks
+
+## Quick match
+Clients send `op: match` to join the first available public two-player lobby or
+create one if none is waiting. Private rooms are excluded, full pairs are skipped,
+and disconnecting the host removes its room. Both players still ready up before
+starting. Deploy the latest relay commit on Render before testing Quick match
+publicly. Existing private room clients remain compatible.
+Run `zsh godot/tests/run_room_test.sh match` for automatic pairing, gameplay sync,
+private-room isolation, capacity and cancellation checks.

@@ -64,15 +64,23 @@ func handle(id: int, msg: Dictionary) -> void:
 	if c.room == "":
 		if msg.get("version") != 1: send_to(id, {"error": "Update required"}); return
 		var code: String = str(msg.get("code", "")).to_upper()
-		if msg.get("op") == "create":
+		var matching: bool = msg.get("op") == "match"
+		if matching:
+			code = ""
+			for candidate in rooms:
+				var available: Dictionary = rooms[candidate]
+				if available.get("public", false) and !available.locked and available.members.size() == 1:
+					code = candidate
+					break
+		if msg.get("op") == "create" or (matching and code.is_empty()):
 			if rooms.size() >= MAX_ROOMS: send_to(id, {"error": "Relay full"}); return
 			code = Crypto.new().generate_random_bytes(4).hex_encode().to_upper()
 			while rooms.has(code): code = Crypto.new().generate_random_bytes(4).hex_encode().to_upper()
-			rooms[code] = {"members": [], "next": 2, "locked": false}
-		elif msg.get("op") != "join" or !rooms.has(code):
+			rooms[code] = {"members": [], "next": 2, "locked": false, "public": matching}
+		elif (msg.get("op") != "join" and !matching) or !rooms.has(code):
 			send_to(id, {"error": "Room not found"}); return
 		var room: Dictionary = rooms[code]
-		if room.members.size() >= 4 or room.locked:
+		if room.members.size() >= (2 if room.get("public", false) else 4) or room.locked:
 			send_to(id, {"error": "Room full or already playing"}); return
 		c.room = code
 		c.peer = 1 if room.members.is_empty() else room.next

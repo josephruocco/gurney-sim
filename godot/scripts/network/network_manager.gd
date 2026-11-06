@@ -72,7 +72,7 @@ func _on_peer_disconnected(id: int) -> void:
 
 signal room_failed(message: String)
 signal room_created(code: String)
-func connect_room(url: String, code: String) -> Error:
+func connect_room(url: String, code: String, quick_match := false) -> Error:
 	if !url.begins_with("wss://") and !url.begins_with("ws://127.0.0.1:"):
 		connection_message.emit("Enter a secure wss:// relay address")
 		return ERR_INVALID_PARAMETER
@@ -87,7 +87,7 @@ func connect_room(url: String, code: String) -> Error:
 			peer_ready.emit(1)
 			connection_message.emit("Room host connected")
 	)
-	var error := peer.connect_room(url, code)
+	var error := peer.connect_room(url, code, quick_match)
 	if error == OK:
 		multiplayer.multiplayer_peer = peer
 		connection_message.emit("Connecting to room relay…")

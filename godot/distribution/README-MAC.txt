@@ -25,3 +25,11 @@ Check that both avatars appear and movements show on the other computer;
 check grabbing, gurney/patient motion, and matching end results.
 Two game processes have connected through the public relay and synchronized
 world state. Two separate physical computers still need testing.
+
+NEW PLAY OPTIONS
+Play now + NPC starts immediately offline with Pip. Pip assists your steering
+and pushing while you hold the gurney and brakes when you let go.
+Quick match finds another waiting player automatically; both then press Ready up.
+Cancel matchmaking leaves the queue. Private Create room / Join room still work.
+Quick match requires the updated relay deployment; it cannot pair players on the
+older server. NPC play works without an internet connection.

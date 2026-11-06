@@ -26,6 +26,8 @@ var player_names: Dictionary = {}
 var ready_players: Dictionary = {}
 var local_ready := false
 var auto_ready := false
+var matchmaking := false
+var session_connecting := false
 var audio: Node
 var gurney_network_target := Transform3D.IDENTITY
 var patient_network_target := Transform3D.IDENTITY
@@ -48,8 +50,14 @@ func _ready() -> void:
 	)
 	network.room_created.connect(func(code: String):
 		hud.room_input.text = code
-		hud.set_internet_status("Share room code: " + code)
+		hud.set_internet_status("Waiting for a teammate… Both press Ready up when paired." if matchmaking else "Share room code: " + code)
 		print("ROOM_CODE ", code)
+	)
+	hud.quick_match_button.pressed.connect(func(): _online_room("", true))
+	hud.cancel_match_button.pressed.connect(func():
+		multiplayer.multiplayer_peer.close()
+		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+		get_tree().reload_current_scene()
 	)
 	hud.create_room_button.pressed.connect(func(): _online_room(""))
 	hud.join_room_button.pressed.connect(func():
@@ -75,7 +83,8 @@ func _ready() -> void:
 	gurney.balance_changed.connect(func(_tilt: float, danger: float): _update_hud(danger))
 	var args := OS.get_cmdline_user_args()
 	auto_ready = "--autostart" in args
-	if "--room-create" in args: _online_room("")
+	if "--quick-match" in args: _online_room("", true)
+	elif "--room-create" in args: _online_room("")
 	elif "--room-join" in args: _online_room(OS.get_environment("GURNEY_ROOM_CODE"))
 	elif "--host" in args: _host_lobby()
 	elif "--join" in args: _join_lobby()
@@ -86,7 +95,7 @@ func _chosen_name() -> String:
 	return cleaned if !cleaned.is_empty() else "Orderly"
 
 func _start_solo() -> void:
-	if !players.is_empty(): return
+	if session_connecting or !players.is_empty(): return
 	network.offline()
 	_spawn_player_everywhere(2)
 	players[2].is_bot = true
@@ -99,6 +108,7 @@ func _start_solo() -> void:
 	_start_run.rpc()
 
 func _host_lobby() -> void:
+	if session_connecting or !players.is_empty(): return
 	var endpoint := _parse_endpoint(hud.address_input.text)
 	if network.host(endpoint.port, !auto_ready) != OK: return
 	hud.set_lobby_connected(true)
@@ -106,6 +116,7 @@ func _host_lobby() -> void:
 	if auto_ready: _set_ready(true)
 
 func _join_lobby() -> void:
+	if session_connecting or !players.is_empty(): return
 	var endpoint := _parse_endpoint(hud.address_input.text)
 	if network.join(endpoint.host, endpoint.port) == OK:
 		hud.set_lobby_connected(true)
@@ -208,6 +219,8 @@ func _apply_lobby_state(names: Dictionary, ready: Dictionary) -> void:
 	player_names = names.duplicate()
 	ready_players = ready.duplicate()
 	hud.set_roster(player_names, ready_players)
+	if matchmaking:
+		hud.set_internet_status("Teammate found! Both press Ready up." if player_names.size() >= 2 else "Waiting for a teammate… Cancel to leave the queue.")
 	for id in players:
 		if player_names.has(id): players[id].set_display_name(player_names[id])
 	print("LOBBY local=%d players=%d ready=%d" % [multiplayer.get_unique_id(), player_names.size(), ready_players.values().count(true)])
@@ -218,6 +231,7 @@ func _start_run() -> void:
 	game_state = GameState.RUNNING
 	run_time = 0.0
 	danger_time = 0.0
+	hud.set_match_controls(false)
 	hud.hide_lobby()
 	hud.hide_result()
 	hud.set_run_time(0.0)
@@ -361,9 +375,12 @@ func _restart_run() -> void:
 	hud.hide_result()
 	hud.set_run_time(0.0)
 
-func _online_room(code: String) -> void:
-	if players.size() > 0:
+func _online_room(code: String, quick_match := false) -> void:
+	if session_connecting or players.size() > 0:
 		hud.status_label.text = "Restart the game before changing sessions"
 		return
-	if network.connect_room(hud.relay_input.text.strip_edges(), code) == OK:
+	matchmaking = quick_match
+	if network.connect_room(hud.relay_input.text.strip_edges(), code, quick_match) == OK:
+		session_connecting = true
+		hud.set_match_controls(quick_match)
 		hud.set_lobby_connected(true)

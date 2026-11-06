@@ -20,6 +20,8 @@ var relay_input: LineEdit
 var room_input: LineEdit
 var create_room_button: Button
 var join_room_button: Button
+var quick_match_button: Button
+var cancel_match_button: Button
 
 func _ready() -> void:
 	var panel := PanelContainer.new()
@@ -214,8 +216,15 @@ func _build_room_controls() -> void:
 	panel.custom_minimum_size = Vector2(340, 0)
 	add_child(panel)
 	var label := Label.new()
-	label.text = "PLAY ONLINE — ROOM CODE"
+	label.text = "PLAY ONLINE"
 	panel.add_child(label)
+	quick_match_button = Button.new()
+	quick_match_button.text = "Quick match — find a teammate"
+	panel.add_child(quick_match_button)
+	cancel_match_button = Button.new()
+	cancel_match_button.text = "Cancel matchmaking"
+	cancel_match_button.visible = false
+	panel.add_child(cancel_match_button)
 	var relay_url := OS.get_environment("GURNEY_RELAY_URL").strip_edges()
 	if relay_url.is_empty(): relay_url = "wss://gurney-relay.onrender.com"
 	relay_input = _field("Relay server (wss://…)", relay_url)
@@ -229,3 +238,7 @@ func _build_room_controls() -> void:
 	join_room_button = Button.new()
 	join_room_button.text = "Join room"
 	panel.add_child(join_room_button)
+
+func set_match_controls(waiting: bool) -> void:
+	quick_match_button.disabled = waiting
+	cancel_match_button.visible = waiting
